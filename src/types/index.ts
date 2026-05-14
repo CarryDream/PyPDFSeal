@@ -1,0 +1,95 @@
+export type PositionMode = "fixed" | "page_xy" | "keyword";
+export type Anchor = "top_left" | "top_right" | "bottom_left" | "bottom_right" | "center";
+export type PageScope = "all" | "first" | "last" | "custom";
+export type WatermarkLayout = "center" | "tile";
+
+export interface PageInfo {
+  width_pt: number;
+  height_pt: number;
+}
+
+export interface DocumentInfo {
+  pages: PageInfo[];
+  total_pages: number;
+}
+
+export interface PositionConfig {
+  mode: PositionMode;
+  anchor: Anchor;
+  dx: number;
+  dy: number;
+  page_x: number;
+  page_y: number;
+  keyword: string;
+  keyword_dx: number;
+  keyword_dy: number;
+  page_scope: PageScope;
+  custom_pages: string;
+}
+
+export interface WatermarkConfig {
+  enabled: boolean;
+  text: string;
+  font_family: string;
+  font_path: string;
+  font_size: number;
+  opacity: number;
+  rotation: number;
+  color: string;
+  layout: WatermarkLayout;
+  page_scope: PageScope;
+  custom_pages: string;
+  gap_x: number;
+  gap_y: number;
+}
+
+export interface CertConfig {
+  enabled: boolean;
+  cert_path: string;
+  password: string;
+  reason: string;
+  location: string;
+  contact: string;
+}
+
+export interface SealOptions {
+  seal_image_path: string;
+  seal_width: number;
+  seal_height: number;
+  seal_opacity: number;
+  position: PositionConfig;
+  watermark: WatermarkConfig;
+  cert: CertConfig;
+  output_dir: string;
+}
+
+export interface BatchProgress {
+  done: number;
+  total: number;
+  file: string;
+  status: "ok" | "error" | "skipped" | "cancelled";
+  output?: string;
+  error?: string;
+}
+
+export interface BatchIssue {
+  file: string;
+  message: string;
+}
+
+export interface BatchSummary {
+  total: number;
+  succeeded: number;
+  failed: number;
+  skipped: number;
+  cancelled: number;
+  elapsed_ms: number;
+  outputs: string[];
+  failures: BatchIssue[];
+  skipped_files: BatchIssue[];
+}
+
+export interface FontInfo {
+  family: string;
+  path: string;
+}

@@ -1,0 +1,63 @@
+# Dependencies
+node_modules/
+#package-lock.json
+
+# Build output
+dist/
+src-tauri/target/
+
+# Tauri generated files
+src-tauri/gen/
+
+# OMC plugin
+.omc/
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# TypeScript
+*.tsbuildinfo
+
+# Vite
+*.local
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.sublime-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Rust
+**/*.rs.bk
+src-tauri/Cargo.lock
+
+# Certificates & keys
+*.pem
+*.p12
+*.pfx
+*.key
+*.cert
+*.crt
+
+# Test & coverage
+coverage/
+*.coveragerc
+
+# Misc
+*.bak
+*.tmp
+*.temp
