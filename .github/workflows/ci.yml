@@ -52,6 +52,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # Tauri 的 generate_context!() 宏会在编译期验证 frontendDist 指向的目录是否存在。
+      # cargo check / clippy 不依赖前端产物，但需要目录存在才能通过宏展开。
+      - name: Create placeholder dist directory for Tauri context
+        run: mkdir -p dist
+
       # Tauri 2 在 Linux 上依赖 WebKitGTK 4.1、GTK、ayatana appindicator 等系统库。
       - name: Install dependencies (Linux)
         if: startsWith(matrix.platform, 'ubuntu')
