@@ -1,7 +1,9 @@
 # Dependencies
 node_modules/
 #package-lock.json
-docs/*
+docs/backup/.mcp.json
+docs/backup/AGENT-SKILLS.MDX
+docs/backup/AGENT.MDX
 
 # Build output
 dist/
@@ -44,7 +46,7 @@ desktop.ini
 
 # Rust
 **/*.rs.bk
-src-tauri/Cargo.lock
+# src-tauri/Cargo.lock
 
 # Certificates & keys
 *.pem

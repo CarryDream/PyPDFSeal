@@ -47,7 +47,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: [ubuntu-latest, windows-latest, macos-latest]
+        platform: [ubuntu-latest, windows-2022, macos-latest]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -98,7 +98,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: [ubuntu-latest, windows-latest, macos-latest]
+        platform: [ubuntu-latest, windows-2022, macos-latest]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -131,7 +131,7 @@ jobs:
         run: npm ci
 
       - name: Build Tauri app (debug, no bundle)
-        run: npm run tauri -- build --debug --no-bundle
+        run: npx tauri build --debug --no-bundle
         env:
           # CI 环境不做应用签名；安装包和 updater artifacts 只在 Release workflow 生成。
           TAURI_SIGNING_PRIVATE_KEY: ""
