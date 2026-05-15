@@ -10,7 +10,9 @@
 - 支持文本水印，包含字体、字号、颜色、透明度、旋转和布局设置。
 - 支持 `.p12` / `.pfx` 证书进行 PDF 数字签名。
 - 支持批处理开始、暂停、恢复、取消。
-- 默认输出到原 PDF 所在目录的 `sealed` 子目录，也可选择输出目录。
+- 默认输出到原 PDF 所在目录的 `sealed` 子目录，也可在设置中选择默认输出目录。
+- 支持配置输出文件名前缀、后缀或不添加额外标记，默认后缀为 `_sealed`。
+- 支持托盘菜单打开设置、检查更新、查看关于信息。
 
 ## 技术栈
 
@@ -89,22 +91,28 @@ npm run tauri:build:exe -- --debug --ci
 
 ## 多平台构建
 
-使用 GitHub Actions 的 `Build Executables` workflow 生成多平台产物：
+GitHub Actions 已拆分为两个 workflow：
+
+- `CI`：普通 push / pull request 触发，执行前端构建、Rust fmt/clippy/check 和 Tauri debug 构建测试。
+- `Release`：推送 `v*` tag 或手动触发，生成多平台 release 产物并统一发布到 GitHub Release。
+
+`Release` workflow 当前发布裸可执行文件，不生成安装包。产物包括：
 
 ```text
 PyPDFSeal-windows-x64.exe
 PyPDFSeal-linux-x64
+PyPDFSeal-linux-arm64
 PyPDFSeal-macos-arm64
 PyPDFSeal-macos-x64
 ```
 
-手动执行：GitHub 仓库 -> Actions -> Build Executables -> Run workflow。
+手动执行：GitHub 仓库 -> Actions -> Release -> Run workflow。手动触发会生成 prerelease 名称，不会反向 push tag。
 
-推送 tag 自动构建 draft release：
+正式发布时推送 tag：
 
 ```bash
-git tag v0.1.0
-git push origin v0.1.0
+git tag v0.1.2
+git push origin v0.1.2
 ```
 
 ## 注意事项

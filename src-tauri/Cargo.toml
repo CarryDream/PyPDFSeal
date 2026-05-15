@@ -1,6 +1,6 @@
 [package]
 name = "pydfseal"
-version = "0.1.1"
+version = "0.1.2"
 description = "PDF batch electronic seal stamping tool"
 authors = ["jinht"]
 edition = "2024"
@@ -59,6 +59,6 @@ base16ct = "0.2"
 
 [profile.release]
 strip = true
-lto = true
-codegen-units = 1
+lto = "thin"
+codegen-units = 16
 panic = "abort"
