@@ -13,18 +13,13 @@ use tauri::{
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
 };
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 enum CloseBehavior {
+    #[default]
     MinimizeToTray,
     MinimizeToTaskbar,
     Exit,
-}
-
-impl Default for CloseBehavior {
-    fn default() -> Self {
-        Self::MinimizeToTray
-    }
 }
 
 struct AppSettingsState {

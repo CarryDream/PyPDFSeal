@@ -123,18 +123,13 @@ pub struct CertConfig {
     pub contact: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum OutputNameMode {
     Prefix,
+    #[default]
     Suffix,
     None,
-}
-
-impl Default for OutputNameMode {
-    fn default() -> Self {
-        Self::Suffix
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
