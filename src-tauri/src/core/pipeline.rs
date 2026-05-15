@@ -16,7 +16,7 @@ pub fn process_task(input_path: &str, options: &SealOptions) -> Result<String> {
         ));
     }
 
-    let output_path = build_output_path(input_path, &options.output_dir);
+    let output_path = build_output_path(input_path, &options.output_dir, &options.output_name);
     let needs_stamp = !options.seal_image_path.is_empty()
         && options.seal_width > 0.0
         && options.seal_height > 0.0;
@@ -77,7 +77,7 @@ pub fn process_task(input_path: &str, options: &SealOptions) -> Result<String> {
     Ok(output_path)
 }
 
-fn build_output_path(input_path: &str, output_dir: &str) -> String {
+fn build_output_path(input_path: &str, output_dir: &str, output_name: &OutputNameConfig) -> String {
     let input = Path::new(input_path);
     let stem = input.file_stem().unwrap_or_default().to_string_lossy();
     let ext = input.extension().unwrap_or_default().to_string_lossy();
@@ -97,6 +97,28 @@ fn build_output_path(input_path: &str, output_dir: &str) -> String {
 
     std::fs::create_dir_all(&target_dir).ok();
 
-    let filename = format!("{}_sealed.{}", stem, ext);
-    target_dir.join(filename).to_string_lossy().to_string()
+    let mut filename = build_output_filename(&stem, &ext, output_name);
+    let mut output = target_dir.join(&filename);
+
+    if output == input {
+        let fallback = OutputNameConfig::default();
+        filename = build_output_filename(&stem, &ext, &fallback);
+        output = target_dir.join(filename);
+    }
+
+    output.to_string_lossy().to_string()
+}
+
+fn build_output_filename(stem: &str, ext: &str, output_name: &OutputNameConfig) -> String {
+    let name = match output_name.mode {
+        OutputNameMode::Prefix => format!("{}{}", output_name.text, stem),
+        OutputNameMode::Suffix => format!("{}{}", stem, output_name.text),
+        OutputNameMode::None => stem.to_string(),
+    };
+
+    if ext.is_empty() {
+        name
+    } else {
+        format!("{}.{}", name, ext)
+    }
 }

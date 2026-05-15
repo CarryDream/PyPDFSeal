@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import type { CloseBehavior } from "../types";
 import type { DocumentInfo, SealOptions, FontInfo } from "../types";
 
 export function ping(): Promise<string> {
@@ -11,6 +12,18 @@ export function getPageInfo(path: string): Promise<DocumentInfo> {
 
 export function listSystemFonts(): Promise<FontInfo[]> {
   return invoke<FontInfo[]>("list_system_fonts");
+}
+
+export function getAppVersion(): Promise<string> {
+  return invoke<string>("get_app_version");
+}
+
+export function setCloseBehavior(behavior: CloseBehavior): Promise<void> {
+  return invoke("set_close_behavior", { behavior });
+}
+
+export function showMainWindow(): Promise<void> {
+  return invoke("show_main_window");
 }
 
 export function batchProcess(files: string[], options: SealOptions): Promise<void> {

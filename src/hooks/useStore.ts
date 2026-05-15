@@ -13,6 +13,7 @@ const PERSIST_KEYS = [
   "sealOpacity",
   "position",
   "watermark",
+  "appSettings",
   "outputDir",
 ] as const;
 
@@ -51,7 +52,23 @@ export function useConfigPersistence() {
           const partial: Record<string, unknown> = {};
           for (const key of PERSIST_KEYS) {
             if (saved[key] !== undefined) {
-              partial[key] = saved[key];
+              if (key === "appSettings" && typeof saved[key] === "object" && saved[key] !== null) {
+                const savedAppSettings = saved[key] as Record<string, unknown>;
+                const currentAppSettings = useConfigStore.getState().appSettings;
+                partial[key] = {
+                  ...currentAppSettings,
+                  ...savedAppSettings,
+                  output_name: {
+                    ...currentAppSettings.output_name,
+                    ...(typeof savedAppSettings.output_name === "object" &&
+                    savedAppSettings.output_name !== null
+                      ? (savedAppSettings.output_name as Record<string, unknown>)
+                      : {}),
+                  },
+                };
+              } else {
+                partial[key] = saved[key];
+              }
             }
           }
           if (saved.cert && typeof saved.cert === "object") {

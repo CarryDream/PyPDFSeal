@@ -2,6 +2,8 @@ export type PositionMode = "fixed" | "page_xy" | "keyword";
 export type Anchor = "top_left" | "top_right" | "bottom_left" | "bottom_right" | "center";
 export type PageScope = "all" | "first" | "last" | "custom";
 export type WatermarkLayout = "center" | "tile";
+export type CloseBehavior = "minimize_to_tray" | "minimize_to_taskbar" | "exit";
+export type OutputNameMode = "suffix" | "prefix" | "none";
 
 export interface PageInfo {
   width_pt: number;
@@ -52,6 +54,27 @@ export interface CertConfig {
   contact: string;
 }
 
+export interface AppSettings {
+  auto_check_updates: boolean;
+  close_behavior: CloseBehavior;
+  output_name: OutputNameConfig;
+}
+
+export interface OutputNameConfig {
+  mode: OutputNameMode;
+  text: string;
+}
+
+export interface UpdateStatus {
+  checking: boolean;
+  current_version: string;
+  latest_version: string;
+  update_available: boolean;
+  release_url: string;
+  error: string;
+  last_checked: string;
+}
+
 export interface SealOptions {
   seal_image_path: string;
   seal_width: number;
@@ -61,6 +84,7 @@ export interface SealOptions {
   watermark: WatermarkConfig;
   cert: CertConfig;
   output_dir: string;
+  output_name: OutputNameConfig;
 }
 
 export interface BatchProgress {

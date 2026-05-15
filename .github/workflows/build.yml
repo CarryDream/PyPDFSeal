@@ -2,17 +2,76 @@ name: Build Executables
 
 on:
   push:
+    branches: [main, master]
     tags:
       - "v*"
-  pull_request:          # 新增：PR 时也跑 CI（推荐）
+  pull_request:
     branches: [main, master]
   workflow_dispatch:
 
 permissions:
-  contents: write       # 发布 Release 需要
+  contents: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
+  release-info:
+    runs-on: ubuntu-22.04
+    outputs:
+      release_tag: ${{ steps.release.outputs.release_tag }}
+      release_name: ${{ steps.release.outputs.release_name }}
+      prerelease: ${{ steps.release.outputs.prerelease }}
+      should_release: ${{ steps.release.outputs.should_release }}
+    steps:
+      - name: Checkout code
+        if: github.event_name != 'pull_request' && github.ref_type == 'branch'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Prepare release info
+        id: release
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+            echo "release_tag=" >> "$GITHUB_OUTPUT"
+            echo "release_name=" >> "$GITHUB_OUTPUT"
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            tag="${GITHUB_REF_NAME}"
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+            echo "release_tag=${tag}" >> "$GITHUB_OUTPUT"
+            echo "release_name=PyPDFSeal ${tag}" >> "$GITHUB_OUTPUT"
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          app_version="$(node -p "require('./src-tauri/tauri.conf.json').version")"
+          short_sha="${GITHUB_SHA::7}"
+          stamp="$(date -u +'%Y%m%d.%H%M%S')"
+          tag="v${app_version}-build.${stamp}.${short_sha}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag "$tag" "$GITHUB_SHA"
+          git push origin "$tag"
+
+          echo "should_release=true" >> "$GITHUB_OUTPUT"
+          echo "release_tag=${tag}" >> "$GITHUB_OUTPUT"
+          echo "release_name=PyPDFSeal ${tag}" >> "$GITHUB_OUTPUT"
+          echo "prerelease=true" >> "$GITHUB_OUTPUT"
+
   build:
+    needs: release-info
+    if: github.event_name != 'pull_request'
     strategy:
       fail-fast: false
       matrix:
@@ -20,21 +79,25 @@ jobs:
           - platform: windows-latest
             target: x86_64-pc-windows-msvc
             label: windows-x64
+            executable: src-tauri/target/x86_64-pc-windows-msvc/release/pydfseal.exe
             artifact: PyPDFSeal-windows-x64.exe
 
           - platform: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
             label: linux-x64
+            executable: src-tauri/target/x86_64-unknown-linux-gnu/release/pydfseal
             artifact: PyPDFSeal-linux-x64
 
           - platform: macos-15
             target: aarch64-apple-darwin
             label: macos-arm64
+            executable: src-tauri/target/aarch64-apple-darwin/release/pydfseal
             artifact: PyPDFSeal-macos-arm64
 
-          - platform: macos-15
+          - platform: macos-15-intel
             target: x86_64-apple-darwin
             label: macos-x64
+            executable: src-tauri/target/x86_64-apple-darwin/release/pydfseal
             artifact: PyPDFSeal-macos-x64
 
     runs-on: ${{ matrix.platform }}
@@ -43,7 +106,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Linux 依赖
       - name: Install Linux dependencies
         if: matrix.platform == 'ubuntu-22.04'
         run: |
@@ -53,19 +115,16 @@ jobs:
             libssl-dev libwebkit2gtk-4.1-dev libxdo-dev \
             librsvg2-dev patchelf wget libgtk-3-dev
 
-      # Rust 工具链
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
 
-      # 缓存（Tauri 项目推荐这样写）
       - name: Rust cache
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: "./src-tauri -> target"
 
-      # Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -75,16 +134,14 @@ jobs:
       - name: Install Node dependencies
         run: npm ci
 
-      # 构建（关键：加上 --target）
       - name: Build Tauri executable
         run: npm run tauri:build:exe -- --target ${{ matrix.target }} --ci
 
-      # 整理产物
       - name: Stage executable
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force artifacts | Out-Null
-          $source = "${{ matrix.executable }}"   # ← 注意这里你原来没写 matrix.executable
+          $source = "${{ matrix.executable }}"
           if (!(Test-Path $source)) {
             throw "Executable not found: $source"
           }
@@ -97,11 +154,51 @@ jobs:
           path: artifacts/${{ matrix.artifact }}
           if-no-files-found: error
 
-      # 只有打 tag 时才发布 Release
       - name: Upload to GitHub Release
-        if: startsWith(github.ref, 'refs/tags/')
+        if: needs.release-info.outputs.should_release == 'true'
         uses: softprops/action-gh-release@v2
         with:
-          draft: true
-          prerelease: false
+          tag_name: ${{ needs.release-info.outputs.release_tag }}
+          name: ${{ needs.release-info.outputs.release_name }}
+          draft: false
+          prerelease: ${{ needs.release-info.outputs.prerelease == 'true' }}
           files: artifacts/${{ matrix.artifact }}
+
+  pr-check:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential curl file libayatana-appindicator3-dev \
+            libssl-dev libwebkit2gtk-4.1-dev libxdo-dev \
+            librsvg2-dev patchelf wget libgtk-3-dev
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "./src-tauri -> target"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "lts/*"
+          cache: "npm"
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Check Rust backend
+        run: cargo check
+        working-directory: src-tauri

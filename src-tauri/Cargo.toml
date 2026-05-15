@@ -1,8 +1,8 @@
 [package]
 name = "pydfseal"
-version = "0.1.0"
+version = "0.1.1"
 description = "PDF batch electronic seal stamping tool"
-authors = ["you"]
+authors = ["jinht"]
 edition = "2024"
 
 [lib]
@@ -14,7 +14,7 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 # Tauri
-tauri = { version = "2", features = ["protocol-asset", "devtools"] }
+tauri = { version = "2", features = ["protocol-asset", "devtools", "tray-icon"] }
 tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"
 tauri-plugin-shell = "2"

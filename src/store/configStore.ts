@@ -3,6 +3,8 @@ import type {
   PositionConfig,
   WatermarkConfig,
   CertConfig,
+  AppSettings,
+  UpdateStatus,
   BatchProgress,
   BatchSummary,
 } from "../types";
@@ -29,6 +31,10 @@ interface ConfigState {
   // Certificate
   cert: CertConfig;
 
+  // App settings
+  appSettings: AppSettings;
+  updateStatus: UpdateStatus;
+
   // Files
   files: string[];
   outputDir: string;
@@ -53,6 +59,8 @@ interface ConfigState {
   setPosition: (p: Partial<PositionConfig>) => void;
   setWatermark: (w: Partial<WatermarkConfig>) => void;
   setCert: (c: Partial<CertConfig>) => void;
+  setAppSettings: (s: Partial<AppSettings>) => void;
+  setUpdateStatus: (s: Partial<UpdateStatus>) => void;
   setFiles: (files: string[]) => void;
   addFiles: (files: string[]) => void;
   removeFile: (index: number) => void;
@@ -107,6 +115,25 @@ const defaultCert: CertConfig = {
   contact: "",
 };
 
+const defaultAppSettings: AppSettings = {
+  auto_check_updates: true,
+  close_behavior: "minimize_to_tray",
+  output_name: {
+    mode: "suffix",
+    text: "_sealed",
+  },
+};
+
+const defaultUpdateStatus: UpdateStatus = {
+  checking: false,
+  current_version: "",
+  latest_version: "",
+  update_available: false,
+  release_url: "",
+  error: "",
+  last_checked: "",
+};
+
 export const useConfigStore = create<ConfigState>((set) => ({
   sealImagePath: "",
   sealWidth: 100,
@@ -115,6 +142,8 @@ export const useConfigStore = create<ConfigState>((set) => ({
   position: defaultPosition,
   watermark: defaultWatermark,
   cert: defaultCert,
+  appSettings: defaultAppSettings,
+  updateStatus: defaultUpdateStatus,
   files: [],
   outputDir: "",
   batchRunning: false,
@@ -135,6 +164,10 @@ export const useConfigStore = create<ConfigState>((set) => ({
   setWatermark: (w) =>
     set((s) => ({ watermark: { ...s.watermark, ...w } })),
   setCert: (c) => set((s) => ({ cert: { ...s.cert, ...c } })),
+  setAppSettings: (settings) =>
+    set((s) => ({ appSettings: { ...s.appSettings, ...settings } })),
+  setUpdateStatus: (status) =>
+    set((s) => ({ updateStatus: { ...s.updateStatus, ...status } })),
   setFiles: (files) => set({ files }),
   addFiles: (newFiles) =>
     set((s) => ({

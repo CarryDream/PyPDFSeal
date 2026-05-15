@@ -124,6 +124,41 @@ pub struct CertConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum OutputNameMode {
+    Prefix,
+    Suffix,
+    None,
+}
+
+impl Default for OutputNameMode {
+    fn default() -> Self {
+        Self::Suffix
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OutputNameConfig {
+    #[serde(default)]
+    pub mode: OutputNameMode,
+    #[serde(default = "default_output_name_text")]
+    pub text: String,
+}
+
+fn default_output_name_text() -> String {
+    "_sealed".into()
+}
+
+impl Default for OutputNameConfig {
+    fn default() -> Self {
+        Self {
+            mode: OutputNameMode::Suffix,
+            text: default_output_name_text(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SealOptions {
     pub seal_image_path: String,
     pub seal_width: f64,
@@ -133,4 +168,6 @@ pub struct SealOptions {
     pub watermark: WatermarkConfig,
     pub cert: CertConfig,
     pub output_dir: String,
+    #[serde(default)]
+    pub output_name: OutputNameConfig,
 }

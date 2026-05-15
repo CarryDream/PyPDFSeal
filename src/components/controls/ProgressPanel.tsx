@@ -5,7 +5,7 @@ import type { SealOptions } from "../../types";
 export default function ProgressPanel() {
   const {
     files, sealImagePath, sealWidth, sealHeight, sealOpacity,
-    position, watermark, cert, outputDir,
+    position, watermark, cert, outputDir, appSettings,
     batchRunning, batchPaused, batchProgress,
     setBatchRunning, setBatchPaused, setBatchProgress,
     setBatchStartedAt, setBatchSummary, addLog, clearLogs,
@@ -27,6 +27,7 @@ export default function ProgressPanel() {
       watermark,
       cert,
       output_dir: outputDir,
+      output_name: appSettings.output_name ?? { mode: "suffix", text: "_sealed" },
     };
 
     setBatchRunning(true);
