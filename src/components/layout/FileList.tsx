@@ -4,7 +4,15 @@ import { useConfigStore } from "../../store/configStore";
 import { scanPdfDir } from "../../utils/ipc";
 
 export default function FileList() {
-  const { files, addFiles, removeFile, outputDir, setOutputDir, selectedPageIndex, setSelectedPageIndex } = useConfigStore();
+  const {
+    files,
+    addFiles,
+    removeFile,
+    outputDir,
+    setOutputDir,
+    selectedFileIndex,
+    setSelectedFileIndex,
+  } = useConfigStore();
   const [selected, setSelected] = useState<Set<number>>(new Set());
 
   const toggleSelect = (index: number) => {
@@ -31,11 +39,14 @@ export default function FileList() {
     if (selected.size === 0) return;
     const store = useConfigStore.getState();
     const remaining = files.filter((_, i) => !selected.has(i));
+    const removedBeforeCurrent = [...selected].filter((i) => i < selectedFileIndex).length;
+    const nextSelectedIndex = selected.has(selectedFileIndex)
+      ? Math.min(selectedFileIndex, Math.max(remaining.length - 1, 0))
+      : Math.max(selectedFileIndex - removedBeforeCurrent, 0);
+
     store.setFiles(remaining);
+    store.setSelectedFileIndex(nextSelectedIndex);
     setSelected(new Set());
-    if (selected.has(selectedPageIndex)) {
-      setSelectedPageIndex(0);
-    }
   };
 
   const handleAddFiles = async () => {
@@ -80,7 +91,12 @@ export default function FileList() {
           <button onClick={handleDeleteSelected} disabled={selected.size === 0} title="删除选中">
             删除({selected.size})
           </button>
-          <button onClick={() => { useConfigStore.getState().setFiles([]); setSelected(new Set()); }}>
+          <button onClick={() => {
+            const store = useConfigStore.getState();
+            store.setFiles([]);
+            store.setSelectedFileIndex(0);
+            setSelected(new Set());
+          }}>
             清空
           </button>
         </div>
@@ -101,8 +117,8 @@ export default function FileList() {
         {files.map((f, i) => (
           <div
             key={i}
-            className={`file-item ${i === selectedPageIndex ? "selected" : ""}`}
-            onClick={() => setSelectedPageIndex(i)}
+            className={`file-item ${i === selectedFileIndex ? "selected" : ""}`}
+            onClick={() => setSelectedFileIndex(i)}
           >
             <input
               type="checkbox"
@@ -117,6 +133,11 @@ export default function FileList() {
               onClick={(e) => {
                 e.stopPropagation();
                 removeFile(i);
+                if (i === selectedFileIndex) {
+                  setSelectedFileIndex(Math.min(i, Math.max(files.length - 2, 0)));
+                } else if (i < selectedFileIndex) {
+                  setSelectedFileIndex(selectedFileIndex - 1);
+                }
                 setSelected((prev) => {
                   const next = new Set<number>();
                   for (const idx of prev) {

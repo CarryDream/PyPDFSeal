@@ -2,8 +2,8 @@ import { useConfigStore } from "../../store/configStore";
 import PdfViewer from "../preview/PdfViewer";
 
 export default function Preview() {
-  const { files, selectedPageIndex } = useConfigStore();
-  const currentFile = files[selectedPageIndex] ?? files[0] ?? null;
+  const { files, selectedFileIndex } = useConfigStore();
+  const currentFile = files[selectedFileIndex] ?? files[0] ?? null;
 
   return (
     <div className="preview-container">

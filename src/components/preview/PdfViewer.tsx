@@ -20,25 +20,35 @@ export default function PdfViewer({ filePath }: PdfViewerProps) {
   const [scale, setScale] = useState(1.5);
   const [viewport, setViewport] = useState<PageViewport | null>(null);
   const [pageDims, setPageDims] = useState<PageInfo[]>([]);
-  const {
-    selectedPageIndex, setSelectedPageIndex,
-    setPosition,
-  } = useConfigStore();
+  const { setPosition } = useConfigStore();
+  const fileName = filePath.split(/[/\\]/).pop() ?? filePath;
 
   // Fetch page dimensions from backend
   useEffect(() => {
     if (!filePath) return;
+    let cancelled = false;
+    setCurrentPage(1);
+    setViewport(null);
+    setPageDims([]);
+
     getPageInfo(filePath)
-      .then((info) => setPageDims(info.pages))
-      .catch(() => setPageDims([]));
+      .then((info) => {
+        if (!cancelled) setPageDims(info.pages);
+      })
+      .catch(() => {
+        if (!cancelled) setPageDims([]);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [filePath]);
 
-  // Sync page from store
   useEffect(() => {
-    if (selectedPageIndex >= 0 && selectedPageIndex < pageCount) {
-      setCurrentPage(selectedPageIndex + 1);
+    if (pageCount > 0 && currentPage > pageCount) {
+      setCurrentPage(pageCount);
     }
-  }, [selectedPageIndex, pageCount]);
+  }, [currentPage, pageCount]);
 
   // Render page when page or scale changes
   useEffect(() => {
@@ -64,17 +74,13 @@ export default function PdfViewer({ filePath }: PdfViewerProps) {
 
   const handlePrev = () => {
     if (currentPage > 1) {
-      const newPage = currentPage - 1;
-      setCurrentPage(newPage);
-      setSelectedPageIndex(newPage - 1);
+      setCurrentPage((page) => page - 1);
     }
   };
 
   const handleNext = () => {
     if (currentPage < pageCount) {
-      const newPage = currentPage + 1;
-      setCurrentPage(newPage);
-      setSelectedPageIndex(newPage - 1);
+      setCurrentPage((page) => page + 1);
     }
   };
 
@@ -92,51 +98,55 @@ export default function PdfViewer({ filePath }: PdfViewerProps) {
 
   const currentPageDim = pageDims[currentPage - 1] ?? null;
 
-  if (loading) {
-    return <div className="pdf-loading">加载中...</div>;
-  }
-  if (error) {
-    return <div className="pdf-error">加载失败: {error}</div>;
-  }
-
   return (
     <div className="pdf-viewer">
       <div className="pdf-toolbar">
-        <button onClick={handlePrev} disabled={currentPage <= 1}>
-          &lt;
-        </button>
-        <span className="page-info">
-          {currentPage} / {pageCount}
+        <span className="pdf-toolbar-file" title={filePath}>
+          {fileName}
         </span>
-        <button onClick={handleNext} disabled={currentPage >= pageCount}>
-          &gt;
-        </button>
-        <span className="scale-info">{Math.round(scale * 100)}%</span>
-        <button onClick={() => setScale((s) => Math.max(MIN_SCALE, s - SCALE_STEP))}>
-          -
-        </button>
-        <button onClick={() => setScale((s) => Math.min(MAX_SCALE, s + SCALE_STEP))}>
-          +
-        </button>
-      </div>
-
-      <div
-        className="pdf-canvas-container"
-        onWheel={handleWheel}
-      >
-        <div className="pdf-canvas-wrapper" style={{ position: "relative" }}>
-          <canvas ref={canvasRef} />
-          {viewport && currentPageDim && (
-            <SealOverlay
-              canvasWidth={canvasRef.current?.width ?? 0}
-              canvasHeight={canvasRef.current?.height ?? 0}
-              pageWidthPt={currentPageDim.width_pt}
-              pageHeightPt={currentPageDim.height_pt}
-              onDrop={handleSealDrop}
-            />
-          )}
+        <div className="pdf-toolbar-controls">
+          <button onClick={handlePrev} disabled={loading || !!error || currentPage <= 1}>
+            &lt;
+          </button>
+          <span className="page-info">
+            {pageCount > 0 ? `${currentPage} / ${pageCount}` : "- / -"}
+          </span>
+          <button onClick={handleNext} disabled={loading || !!error || currentPage >= pageCount}>
+            &gt;
+          </button>
+          <span className="scale-info">{Math.round(scale * 100)}%</span>
+          <button onClick={() => setScale((s) => Math.max(MIN_SCALE, s - SCALE_STEP))}>
+            -
+          </button>
+          <button onClick={() => setScale((s) => Math.min(MAX_SCALE, s + SCALE_STEP))}>
+            +
+          </button>
         </div>
       </div>
+
+      {loading ? (
+        <div className="pdf-loading">加载中...</div>
+      ) : error ? (
+        <div className="pdf-error">加载失败: {error}</div>
+      ) : (
+        <div
+          className="pdf-canvas-container"
+          onWheel={handleWheel}
+        >
+          <div className="pdf-canvas-wrapper" style={{ position: "relative" }}>
+            <canvas ref={canvasRef} />
+            {viewport && currentPageDim && (
+              <SealOverlay
+                canvasWidth={canvasRef.current?.width ?? 0}
+                canvasHeight={canvasRef.current?.height ?? 0}
+                pageWidthPt={currentPageDim.width_pt}
+                pageHeightPt={currentPageDim.height_pt}
+                onDrop={handleSealDrop}
+              />
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

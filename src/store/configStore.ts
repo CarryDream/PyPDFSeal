@@ -42,7 +42,7 @@ interface ConfigState {
   logs: LogEntry[];
 
   // Preview
-  selectedPageIndex: number;
+  selectedFileIndex: number;
   previewScale: number;
 
   // Actions
@@ -64,7 +64,7 @@ interface ConfigState {
   setBatchSummary: (s: BatchSummary | null) => void;
   addLog: (message: string, color?: string) => void;
   clearLogs: () => void;
-  setSelectedPageIndex: (i: number) => void;
+  setSelectedFileIndex: (i: number) => void;
   setPreviewScale: (s: number) => void;
 }
 
@@ -123,7 +123,7 @@ export const useConfigStore = create<ConfigState>((set) => ({
   batchStartedAt: null,
   batchSummary: null,
   logs: [],
-  selectedPageIndex: 0,
+  selectedFileIndex: 0,
   previewScale: 1.0,
 
   setSealImagePath: (path) => set({ sealImagePath: path }),
@@ -156,6 +156,6 @@ export const useConfigStore = create<ConfigState>((set) => ({
       ],
     })),
   clearLogs: () => set({ logs: [], batchSummary: null }),
-  setSelectedPageIndex: (i) => set({ selectedPageIndex: i }),
+  setSelectedFileIndex: (i) => set({ selectedFileIndex: i }),
   setPreviewScale: (s) => set({ previewScale: s }),
 }));

@@ -4,10 +4,12 @@ on:
   push:
     tags:
       - "v*"
+  pull_request:          # 新增：PR 时也跑 CI（推荐）
+    branches: [main, master]
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: write       # 发布 Release 需要
 
 jobs:
   build:
@@ -18,85 +20,85 @@ jobs:
           - platform: windows-latest
             target: x86_64-pc-windows-msvc
             label: windows-x64
-            executable: src-tauri/target/x86_64-pc-windows-msvc/release/pydfseal.exe
             artifact: PyPDFSeal-windows-x64.exe
+
           - platform: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
             label: linux-x64
-            executable: src-tauri/target/x86_64-unknown-linux-gnu/release/pydfseal
             artifact: PyPDFSeal-linux-x64
+
           - platform: macos-15
             target: aarch64-apple-darwin
             label: macos-arm64
-            executable: src-tauri/target/aarch64-apple-darwin/release/pydfseal
             artifact: PyPDFSeal-macos-arm64
-          - platform: macos-15-intel
+
+          - platform: macos-15
             target: x86_64-apple-darwin
             label: macos-x64
-            executable: src-tauri/target/x86_64-apple-darwin/release/pydfseal
             artifact: PyPDFSeal-macos-x64
 
     runs-on: ${{ matrix.platform }}
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
+      # Linux 依赖
       - name: Install Linux dependencies
         if: matrix.platform == 'ubuntu-22.04'
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            build-essential \
-            curl \
-            file \
-            libayatana-appindicator3-dev \
-            libssl-dev \
-            libwebkit2gtk-4.1-dev \
-            libxdo-dev \
-            librsvg2-dev \
-            patchelf \
-            wget
+            build-essential curl file libayatana-appindicator3-dev \
+            libssl-dev libwebkit2gtk-4.1-dev libxdo-dev \
+            librsvg2-dev patchelf wget libgtk-3-dev
 
-      - name: Install Rust stable
+      # Rust 工具链
+      - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
 
+      # 缓存（Tauri 项目推荐这样写）
       - name: Rust cache
-        uses: swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@v2
         with:
           workspaces: "./src-tauri -> target"
 
+      # Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "lts/*"
-          cache: npm
+          cache: "npm"
 
       - name: Install Node dependencies
         run: npm ci
 
-      - name: Build executable
+      # 构建（关键：加上 --target）
+      - name: Build Tauri executable
         run: npm run tauri:build:exe -- --target ${{ matrix.target }} --ci
 
+      # 整理产物
       - name: Stage executable
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force artifacts | Out-Null
-          $source = "${{ matrix.executable }}"
+          $source = "${{ matrix.executable }}"   # ← 注意这里你原来没写 matrix.executable
           if (!(Test-Path $source)) {
             throw "Executable not found: $source"
           }
           Copy-Item $source "artifacts/${{ matrix.artifact }}"
 
-      - name: Upload executable artifact
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.label }}
           path: artifacts/${{ matrix.artifact }}
           if-no-files-found: error
 
-      - name: Upload tagged release asset
+      # 只有打 tag 时才发布 Release
+      - name: Upload to GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
