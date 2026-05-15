@@ -1,6 +1,6 @@
 [package]
 name = "pydfseal"
-version = "0.1.3"
+version = "1.0.0"
 description = "PDF 批量电子盖章工具 - 支持印章、水印、数字签名"
 authors = ["jinht"]
 license = "MIT OR Apache-2.0"
