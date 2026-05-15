@@ -164,16 +164,22 @@ jobs:
           pattern: release-assets-*
           merge-multiple: true
 
-      - name: Stage updater manifest
+      - name: Stage release files
         shell: bash
         run: |
           set -euo pipefail
-          manifest="$(find all-artifacts -name '*.json' -type f | head -n 1 || true)"
+          mkdir -p release-files
+          # Flatten all artifact files into a single directory
+          find all-artifacts -type f -exec cp -t release-files {} +
+          # Stage updater manifest
+          manifest="$(find release-files -name '*.json' -type f | head -n 1 || true)"
           if [ -n "$manifest" ]; then
-            cp "$manifest" all-artifacts/latest.json
+            cp "$manifest" release-files/latest.json
           else
             echo "No updater manifest found. Check Tauri updater signing configuration." >&2
           fi
+          echo "Release files:"
+          ls -lh release-files/
 
       # README 当前没有按版本维护 changelog；没有提取到内容时使用默认说明。
       - name: Extract Release Notes
@@ -200,7 +206,7 @@ jobs:
           name: ${{ needs.release-info.outputs.release_name }}
           bodyFile: release_notes.md
           token: ${{ secrets.GITHUB_TOKEN }}
-          artifacts: all-artifacts/**
+          artifacts: release-files/*
           artifactErrorsFailBuild: true
           replacesArtifacts: true
           prerelease: ${{ needs.release-info.outputs.prerelease == 'true' }}
