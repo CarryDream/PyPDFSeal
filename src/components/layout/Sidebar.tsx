@@ -1,37 +1,39 @@
 import { useState } from "react";
+import { Tabs, Tab } from "@heroui/react";
 import SealPanel from "../panels/SealPanel";
-import PositionPanel from "../panels/PositionPanel";
 import WatermarkPanel from "../panels/WatermarkPanel";
 import CertPanel from "../panels/CertPanel";
-
-const tabs = [
-  { id: "seal", label: "印章", component: SealPanel },
-  { id: "position", label: "位置", component: PositionPanel },
-  { id: "watermark", label: "水印", component: WatermarkPanel },
-  { id: "cert", label: "签名", component: CertPanel },
-];
 
 export default function Sidebar() {
   const [activeTab, setActiveTab] = useState("seal");
 
-  const ActiveComponent = tabs.find((t) => t.id === activeTab)?.component ?? SealPanel;
-
   return (
-    <div className="sidebar">
-      <div className="tab-bar">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            className={`tab-btn ${activeTab === tab.id ? "active" : ""}`}
-            onClick={() => setActiveTab(tab.id)}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-      <div className="tab-content">
-        <ActiveComponent />
-      </div>
+    <div className="h-full flex flex-col bg-content2 min-h-0 overflow-hidden">
+      <Tabs
+        selectedKey={activeTab}
+        onSelectionChange={(key) => setActiveTab(key as string)}
+        variant="light"
+        color="primary"
+        size="sm"
+        className="shrink-0"
+        classNames={{
+          base: "shrink-0",
+          tabList: "flex-shrink-0 px-1 pt-1.5 bg-content2 border-b border-divider",
+          tab: "text-sm font-medium h-9 px-3 data-[selected=true]:font-semibold",
+          tabContent: "text-foreground",
+          panel: "flex-1 min-h-0 overflow-auto p-3 bg-content1",
+        }}
+      >
+        <Tab key="seal" title="印章">
+          <SealPanel />
+        </Tab>
+        <Tab key="watermark" title="水印">
+          <WatermarkPanel />
+        </Tab>
+        <Tab key="cert" title="签名">
+          <CertPanel />
+        </Tab>
+      </Tabs>
     </div>
   );
 }

@@ -17,6 +17,7 @@ interface LogEntry {
 
 interface ConfigState {
   // Seal
+  sealEnabled: boolean;
   sealImagePath: string;
   sealWidth: number;
   sealHeight: number;
@@ -53,6 +54,7 @@ interface ConfigState {
 
   // Actions
   setSealImagePath: (path: string) => void;
+  setSealEnabled: (enabled: boolean) => void;
   setSealWidth: (w: number) => void;
   setSealHeight: (h: number) => void;
   setSealOpacity: (o: number) => void;
@@ -138,6 +140,7 @@ const defaultUpdateStatus: UpdateStatus = {
 };
 
 export const useConfigStore = create<ConfigState>((set) => ({
+  sealEnabled: false,
   sealImagePath: "",
   sealWidth: 100,
   sealHeight: 100,
@@ -159,6 +162,7 @@ export const useConfigStore = create<ConfigState>((set) => ({
   previewScale: 1.0,
 
   setSealImagePath: (path) => set({ sealImagePath: path }),
+  setSealEnabled: (enabled) => set({ sealEnabled: enabled }),
   setSealWidth: (w) => set({ sealWidth: w }),
   setSealHeight: (h) => set({ sealHeight: h }),
   setSealOpacity: (o) => set({ sealOpacity: o }),

@@ -1,4 +1,5 @@
 import { open } from "@tauri-apps/plugin-dialog";
+import { Button, Checkbox, Input } from "@heroui/react";
 import { useConfigStore } from "../../store/configStore";
 
 export default function CertPanel() {
@@ -14,53 +15,74 @@ export default function CertPanel() {
   };
 
   return (
-    <div className="panel cert-panel">
-      <h3>数字签名</h3>
-
-      <label className="checkbox-label">
-        <input
-          type="checkbox"
-          checked={cert.enabled}
-          onChange={(e) => setCert({ enabled: e.target.checked })}
-        />
-        启用签名
-      </label>
+    <div className="flex flex-col gap-4 text-sm">
+      {/* 启用签名 */}
+      <Checkbox
+        isSelected={cert.enabled}
+        onValueChange={(checked) => setCert({ enabled: checked })}
+        size="sm"
+        color="primary"
+      >
+        <span className="text-sm">启用签名</span>
+      </Checkbox>
 
       {cert.enabled && (
         <>
-          <label>证书文件 (.pfx/.p12)</label>
-          <div className="row">
-            <input type="text" value={cert.cert_path} readOnly placeholder="选择证书..." />
-            <button onClick={handleSelectCert}>选择</button>
+          {/* 证书文件 */}
+          <div>
+            <div className="text-xs font-medium text-foreground-600 mb-1.5">证书文件 (.pfx/.p12)</div>
+            <div className="flex gap-2">
+              <Input
+                value={cert.cert_path || ""}
+                placeholder="选择证书..."
+                readOnly
+                size="sm"
+                className="min-w-0 flex-1"
+              />
+              <Button size="sm" variant="flat" color="primary" onPress={handleSelectCert}>
+                选择
+              </Button>
+            </div>
           </div>
 
-          <label>密码</label>
-          <input
+          {/* 密码 */}
+          <Input
             type="password"
+            label="密码"
             value={cert.password}
-            onChange={(e) => setCert({ password: e.target.value })}
+            onValueChange={(val) => setCert({ password: val })}
+            placeholder="输入证书密码"
+            size="sm"
           />
 
-          <label>签名原因</label>
-          <input
+          {/* 签名原因 */}
+          <Input
             type="text"
+            label="签名原因"
             value={cert.reason}
-            onChange={(e) => setCert({ reason: e.target.value })}
+            onValueChange={(val) => setCert({ reason: val })}
             placeholder="例: 批准"
+            size="sm"
           />
 
-          <label>签名地点</label>
-          <input
+          {/* 签名地点 */}
+          <Input
             type="text"
+            label="签名地点"
             value={cert.location}
-            onChange={(e) => setCert({ location: e.target.value })}
+            onValueChange={(val) => setCert({ location: val })}
+            placeholder="例: 公司总部"
+            size="sm"
           />
 
-          <label>联系方式</label>
-          <input
+          {/* 联系方式 */}
+          <Input
             type="text"
+            label="联系方式"
             value={cert.contact}
-            onChange={(e) => setCert({ contact: e.target.value })}
+            onValueChange={(val) => setCert({ contact: val })}
+            placeholder="邮箱或电话"
+            size="sm"
           />
         </>
       )}

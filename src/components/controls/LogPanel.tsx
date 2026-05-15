@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { MouseEvent as ReactMouseEvent } from "react";
+import { Button } from "@heroui/react";
 import { useConfigStore } from "../../store/configStore";
-import type { BatchIssue, BatchSummary } from "../../types";
 
 type LogPanelMode = "normal" | "minimized" | "maximized";
 
@@ -10,7 +10,7 @@ const MIN_HEIGHT = 92;
 const MINIMIZED_HEIGHT = 32;
 
 export default function LogPanel() {
-  const { logs, batchSummary, clearLogs } = useConfigStore();
+  const { logs, clearLogs } = useConfigStore();
   const [height, setHeight] = useState(DEFAULT_HEIGHT);
   const [mode, setMode] = useState<LogPanelMode>("normal");
   const dragRef = useRef<{ startY: number; startHeight: number } | null>(null);
@@ -98,123 +98,37 @@ export default function LogPanel() {
         onDoubleClick={toggleByDoubleClick}
         title="拖拽调整日志高度，双击最大化或最小化"
       />
-      <div className="log-header">
-        <span>日志</span>
-        <div className="log-actions">
-          <button onClick={clearLogs}>清空</button>
+      <div className="flex items-center justify-between px-2 py-1 border-b border-divider bg-content1 shrink-0">
+        <span className="text-sm font-medium text-foreground">日志</span>
+        <div className="flex gap-0.5">
+          <Button size="sm" variant="light" onPress={clearLogs}>清空</Button>
           {mode === "minimized" ? (
-            <button onClick={restore}>还原</button>
+            <Button size="sm" variant="light" onPress={restore}>还原</Button>
           ) : (
-            <button onClick={minimize}>最小化</button>
+            <Button size="sm" variant="light" onPress={minimize}>最小化</Button>
           )}
           {mode === "maximized" ? (
-            <button onClick={restore}>还原</button>
+            <Button size="sm" variant="light" onPress={restore}>还原</Button>
           ) : (
-            <button onClick={maximize}>最大化</button>
+            <Button size="sm" variant="light" onPress={maximize}>最大化</Button>
           )}
         </div>
       </div>
+
       {mode !== "minimized" && (
-        <>
-          {batchSummary && <BatchSummaryCard summary={batchSummary} />}
-          <div className="log-content">
-            {logs.map((log, i) => (
-              <div key={i} className="log-entry" style={{ color: log.color }}>
-                <span className="log-time">{log.time}</span>
-                <span className="log-msg">{log.message}</span>
+        <div className="log-content flex-1 overflow-y-auto p-2 text-xs font-mono space-y-0.5">
+          {logs.length === 0 ? (
+            <div className="text-foreground-400 px-2 py-1">暂无日志</div>
+          ) : (
+            logs.map((log, i) => (
+              <div key={i} className="flex gap-2 text-foreground-600" style={{ color: log.color || undefined }}>
+                <span className="text-foreground-400 shrink-0">[{log.time}]</span>
+                <span className="flex-1 break-all">{log.message}</span>
               </div>
-            ))}
-          </div>
-        </>
+            ))
+          )}
+        </div>
       )}
     </div>
   );
-}
-
-function BatchSummaryCard({ summary }: { summary: BatchSummary }) {
-  return (
-    <div className="batch-summary">
-      <div className="batch-summary-head">
-        <div>
-          <div className="batch-summary-title">执行完成</div>
-          <div className="batch-summary-subtitle">
-            共 {summary.total} 个文件，用时 {formatElapsed(summary.elapsed_ms)}
-          </div>
-        </div>
-        <div className={summary.failed > 0 ? "summary-badge danger" : "summary-badge success"}>
-          {summary.failed > 0 ? "有失败" : "完成"}
-        </div>
-      </div>
-
-      <div className="summary-metrics">
-        <Metric label="成功" value={summary.succeeded} tone="success" />
-        <Metric label="失败" value={summary.failed} tone="danger" />
-        <Metric label="跳过" value={summary.skipped} tone="warning" />
-        <Metric label="取消" value={summary.cancelled} tone="muted" />
-      </div>
-
-      {summary.failures.length > 0 && (
-        <IssueList title="失败文件" issues={summary.failures} tone="danger" />
-      )}
-      {summary.skipped_files.length > 0 && (
-        <IssueList title="跳过文件" issues={summary.skipped_files} tone="warning" />
-      )}
-    </div>
-  );
-}
-
-function Metric({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: number;
-  tone: "success" | "danger" | "warning" | "muted";
-}) {
-  return (
-    <div className={`summary-metric ${tone}`}>
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
-  );
-}
-
-function IssueList({
-  title,
-  issues,
-  tone,
-}: {
-  title: string;
-  issues: BatchIssue[];
-  tone: "danger" | "warning";
-}) {
-  return (
-    <div className={`summary-issues ${tone}`}>
-      <div className="summary-issues-title">{title}</div>
-      {issues.map((issue) => (
-        <div className="summary-issue" key={`${issue.file}-${issue.message}`}>
-          <span className="summary-issue-file" title={issue.file}>
-            {basename(issue.file)}
-          </span>
-          <span className="summary-issue-message">{issue.message}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function basename(path: string): string {
-  return path.split(/[/\\]/).pop() || path;
-}
-
-function formatElapsed(ms: number): string {
-  if (ms < 1000) return `${ms} ms`;
-
-  const totalSeconds = Math.round(ms / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  if (minutes === 0) return `${seconds} 秒`;
-
-  return `${minutes} 分 ${seconds} 秒`;
 }

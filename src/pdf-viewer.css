@@ -3,6 +3,7 @@
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-height: 0;
 }
 
 .pdf-toolbar {
@@ -55,14 +56,31 @@
 
 .pdf-canvas-container {
   flex: 1;
+  min-height: 0;
+  min-width: 0;
   overflow: auto;
+  scrollbar-gutter: stable;
   background: #e8e8e8;
-  display: flex;
-  justify-content: center;
+}
+
+.pdf-canvas-stage {
+  width: max-content;
+  min-width: 100%;
+  min-height: 100%;
+  box-sizing: border-box;
   padding: 20px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
 }
 
 .pdf-canvas-wrapper {
+  position: relative;
+  display: block;
+  width: max-content;
+  min-width: max-content;
+  flex: 0 0 auto;
+  margin: 0;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   background: #fff;
   line-height: 0;

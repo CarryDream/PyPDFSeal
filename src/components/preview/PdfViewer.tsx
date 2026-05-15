@@ -12,12 +12,13 @@ interface PdfViewerProps {
 const SCALE_STEP = 0.15;
 const MIN_SCALE = 0.3;
 const MAX_SCALE = 4.0;
+const DEFAULT_SCALE = 1.0;
 
 export default function PdfViewer({ filePath }: PdfViewerProps) {
   const { pageCount, loading, error, renderPage } = usePdfDocument(filePath);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [scale, setScale] = useState(1.5);
+  const [scale, setScale] = useState(DEFAULT_SCALE);
   const [viewport, setViewport] = useState<PageViewport | null>(null);
   const [pageDims, setPageDims] = useState<PageInfo[]>([]);
   const { setPosition } = useConfigStore();
@@ -28,6 +29,7 @@ export default function PdfViewer({ filePath }: PdfViewerProps) {
     if (!filePath) return;
     let cancelled = false;
     setCurrentPage(1);
+    setScale(DEFAULT_SCALE);
     setViewport(null);
     setPageDims([]);
 
@@ -133,17 +135,19 @@ export default function PdfViewer({ filePath }: PdfViewerProps) {
           className="pdf-canvas-container"
           onWheel={handleWheel}
         >
-          <div className="pdf-canvas-wrapper" style={{ position: "relative" }}>
-            <canvas ref={canvasRef} />
-            {viewport && currentPageDim && (
-              <SealOverlay
-                canvasWidth={canvasRef.current?.width ?? 0}
-                canvasHeight={canvasRef.current?.height ?? 0}
-                pageWidthPt={currentPageDim.width_pt}
-                pageHeightPt={currentPageDim.height_pt}
-                onDrop={handleSealDrop}
-              />
-            )}
+          <div className="pdf-canvas-stage">
+            <div className="pdf-canvas-wrapper">
+              <canvas ref={canvasRef} />
+              {viewport && currentPageDim && canvasRef.current?.width && canvasRef.current?.height && (
+                <SealOverlay
+                  canvasWidth={canvasRef.current.width}
+                  canvasHeight={canvasRef.current.height}
+                  pageWidthPt={currentPageDim.width_pt}
+                  pageHeightPt={currentPageDim.height_pt}
+                  onDrop={handleSealDrop}
+                />
+              )}
+            </div>
           </div>
         </div>
       )}

@@ -7,6 +7,7 @@ const DEBOUNCE_MS = 500;
 
 // Keys to persist (excluding transient state and sensitive data)
 const PERSIST_KEYS = [
+  "sealEnabled",
   "sealImagePath",
   "sealWidth",
   "sealHeight",

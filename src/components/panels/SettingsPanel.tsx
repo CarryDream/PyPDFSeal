@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
+import { Button, Checkbox, Input, Select, SelectItem } from "@heroui/react";
 import { useConfigStore } from "../../store/configStore";
 import { getAppVersion } from "../../utils/ipc";
 import { openReleasePage } from "../../utils/updates";
@@ -28,10 +29,20 @@ export default function SettingsPanel() {
     setAppSettings({ close_behavior: value as CloseBehavior });
   };
 
+  const handleCloseBehaviorKeys = (keys: any) => {
+    const value = Array.from(keys)[0] as string | undefined;
+    if (value) handleCloseBehaviorChange(value);
+  };
+
   const handleOutputNameModeChange = (value: string) => {
     setAppSettings({
       output_name: { ...outputName, mode: value as OutputNameMode },
     });
+  };
+
+  const handleOutputNameModeKeys = (keys: any) => {
+    const value = Array.from(keys)[0] as string | undefined;
+    if (value) handleOutputNameModeChange(value);
   };
 
   const handleSelectOutput = async () => {
@@ -42,62 +53,66 @@ export default function SettingsPanel() {
   };
 
   return (
-    <div className="panel settings-panel">
-      <label className="checkbox-label">
-        <input
-          type="checkbox"
-          checked={appSettings.auto_check_updates}
-          onChange={(e) => setAppSettings({ auto_check_updates: e.target.checked })}
-        />
-        启动时检查更新
-      </label>
-
-      <label>点击窗口关闭按钮</label>
-      <select
-        value={appSettings.close_behavior}
-        onChange={(e) => handleCloseBehaviorChange(e.target.value)}
+    <div className="flex flex-col gap-4 text-sm">
+      <Checkbox
+        isSelected={appSettings.auto_check_updates}
+        onValueChange={(checked) => setAppSettings({ auto_check_updates: checked })}
+        size="sm"
       >
-        <option value="minimize_to_tray">最小化到托盘</option>
-        <option value="minimize_to_taskbar">最小化到任务栏</option>
-        <option value="exit">直接退出</option>
-      </select>
+        启动时检查更新
+      </Checkbox>
+
+      <Select
+        label="点击窗口关闭按钮"
+        selectedKeys={[appSettings.close_behavior]}
+        onSelectionChange={handleCloseBehaviorKeys}
+        size="sm"
+      >
+        <SelectItem key="minimize_to_tray">最小化到托盘</SelectItem>
+        <SelectItem key="minimize_to_taskbar">最小化到任务栏</SelectItem>
+        <SelectItem key="exit">直接退出</SelectItem>
+      </Select>
 
       <div className="settings-section">
-        <label>默认输出目录</label>
-        <div className="output-dir-row">
-          <input
-            type="text"
+        <div className="text-xs font-medium text-foreground-600">默认输出目录</div>
+        <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] gap-2">
+          <Input
             value={outputDir}
             placeholder="默认: 原文件同级 sealed 子目录"
             readOnly
+            size="sm"
+            className="min-w-0"
           />
-          <button onClick={handleSelectOutput}>选择</button>
-          <button onClick={() => setOutputDir("")} disabled={!outputDir}>
+          <Button size="sm" variant="flat" onPress={handleSelectOutput}>
+            选择
+          </Button>
+          <Button size="sm" variant="flat" onPress={() => setOutputDir("")} isDisabled={!outputDir}>
             清除
-          </button>
+          </Button>
         </div>
       </div>
 
       <div className="settings-section">
-        <label>输出文件名</label>
-        <select
-          value={outputName.mode}
-          onChange={(e) => handleOutputNameModeChange(e.target.value)}
+        <Select
+          label="输出文件名"
+          selectedKeys={[outputName.mode]}
+          onSelectionChange={handleOutputNameModeKeys}
+          size="sm"
         >
-          <option value="suffix">添加后缀</option>
-          <option value="prefix">添加前缀</option>
-          <option value="none">不添加</option>
-        </select>
+          <SelectItem key="suffix">添加后缀</SelectItem>
+          <SelectItem key="prefix">添加前缀</SelectItem>
+          <SelectItem key="none">不添加</SelectItem>
+        </Select>
         {outputName.mode !== "none" && (
-          <input
-            type="text"
+          <Input
             value={outputName.text}
             placeholder={outputName.mode === "suffix" ? "_sealed" : "sealed_"}
-            onChange={(e) =>
+            onValueChange={(value) =>
               setAppSettings({
-                output_name: { ...outputName, text: e.target.value },
+                output_name: { ...outputName, text: value },
               })
             }
+            size="sm"
           />
         )}
         <div className="settings-note">
@@ -114,23 +129,25 @@ export default function SettingsPanel() {
           <span>最新版本</span>
           <strong>{updateStatus.latest_version || "-"}</strong>
         </div>
-        <button onClick={() => void checkAppUpdates()} disabled={updateStatus.checking}>
+        <Button size="sm" variant="flat" onPress={() => void checkAppUpdates()} isDisabled={updateStatus.checking}>
           {updateStatus.checking ? "检查中..." : "检查新版"}
-        </button>
+        </Button>
         {updateStatus.update_available && updateStatus.installable && (
-          <button
-            onClick={() => void installAppUpdate()}
-            disabled={updateStatus.installing}
+          <Button
+            size="sm"
+            color="primary"
+            onPress={() => void installAppUpdate()}
+            isDisabled={updateStatus.installing}
           >
             {updateStatus.installing
               ? `更新中 ${updateStatus.download_progress || 0}%`
               : "下载并安装"}
-          </button>
+          </Button>
         )}
         {updateStatus.update_available && (
-          <button onClick={() => void openReleasePage(updateStatus.release_url)}>
+          <Button size="sm" variant="flat" onPress={() => void openReleasePage(updateStatus.release_url)}>
             打开下载页
-          </button>
+          </Button>
         )}
         {updateStatus.last_checked && (
           <div className="settings-note">上次检查: {updateStatus.last_checked}</div>

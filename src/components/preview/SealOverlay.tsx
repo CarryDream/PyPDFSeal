@@ -1,6 +1,7 @@
 import { useRef, useState, useCallback, useEffect } from "react";
 import { useConfigStore } from "../../store/configStore";
 import { pixelToPdfPt, pdfPtToPixel } from "../../utils/coordinates";
+import { localFileSrc } from "../../utils/localFile";
 import type { Anchor } from "../../types";
 
 interface SealOverlayProps {
@@ -18,7 +19,7 @@ export default function SealOverlay({
   pageHeightPt,
   onDrop,
 }: SealOverlayProps) {
-  const { sealWidth, sealHeight, position, sealImagePath } = useConfigStore();
+  const { sealEnabled, sealWidth, sealHeight, sealOpacity, position, sealImagePath } = useConfigStore();
   const [dragging, setDragging] = useState(false);
   const [pos, setPos] = useState({ x: 100, y: 100 });
   const offsetRef = useRef({ x: 0, y: 0 });
@@ -107,7 +108,39 @@ export default function SealOverlay({
     onDrop(pdf.x, pdf.y);
   }, [dragging, pos, sealW, sealH, canvasWidth, canvasHeight, pageWidthPt, pageHeightPt, onDrop]);
 
-  if (!sealImagePath) return null;
+  if (!sealEnabled) return null;
+
+  if (!sealImagePath) {
+    return (
+      <div
+        className="seal-overlay"
+        style={{
+          position: "absolute",
+          inset: 0,
+          width: canvasWidth,
+          height: canvasHeight,
+          pointerEvents: "none",
+        }}
+      >
+        <div
+          style={{
+            position: "absolute",
+            left: Math.max(12, Math.min(canvasWidth - 150, pos.x)),
+            top: Math.max(12, Math.min(canvasHeight - 40, pos.y)),
+            padding: "7px 10px",
+            borderRadius: 6,
+            border: "1px dashed #dc2626",
+            background: "rgba(255,255,255,0.92)",
+            color: "#dc2626",
+            fontSize: 12,
+            fontWeight: 600,
+          }}
+        >
+          请先选择印章图片
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -134,27 +167,28 @@ export default function SealOverlay({
           height: sealH,
           border: "2px dashed #e53935",
           cursor: dragging ? "grabbing" : "grab",
-          opacity: dragging ? 0.8 : 0.6,
+          opacity: dragging ? 0.78 : 1,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           pointerEvents: "all",
-          background: dragging ? "rgba(229, 57, 53, 0.05)" : "transparent",
+          overflow: "hidden",
+          background: "rgba(255,255,255,0.15)",
         }}
         onMouseDown={handleMouseDown}
       >
-        <span
+        <img
+          src={localFileSrc(sealImagePath)}
+          alt="印章拖拽预览"
           style={{
-            color: "#e53935",
-            fontSize: 11,
-            fontWeight: 600,
             pointerEvents: "none",
             userSelect: "none",
-            textShadow: "0 0 3px #fff",
+            width: "100%",
+            height: "100%",
+            objectFit: "contain",
+            opacity: dragging ? Math.max(0.2, sealOpacity * 0.72) : sealOpacity,
           }}
-        >
-          拖拽定位
-        </span>
+        />
       </div>
     </div>
   );

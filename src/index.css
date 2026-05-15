@@ -1,0 +1,10 @@
+@import "tailwindcss";
+@plugin "./hero.ts";
+@source "../node_modules/@heroui/theme/dist/**/*.{js,ts,jsx,tsx}";
+@source "../node_modules/@heroui/react/node_modules/@heroui/theme/dist/**/*.{js,ts,jsx,tsx}";
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --heroui-radius-small: 4px;
+  --heroui-radius-medium: 6px;
+}

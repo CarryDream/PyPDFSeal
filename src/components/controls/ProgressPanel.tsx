@@ -1,10 +1,11 @@
+import { Button, Progress } from "@heroui/react";
 import { useConfigStore } from "../../store/configStore";
 import { batchProcess, batchPause, batchResume, batchCancel } from "../../utils/ipc";
 import type { SealOptions } from "../../types";
 
 export default function ProgressPanel() {
   const {
-    files, sealImagePath, sealWidth, sealHeight, sealOpacity,
+    files, sealEnabled, sealImagePath, sealWidth, sealHeight, sealOpacity,
     position, watermark, cert, outputDir, appSettings,
     batchRunning, batchPaused, batchProgress,
     setBatchRunning, setBatchPaused, setBatchProgress,
@@ -13,13 +14,13 @@ export default function ProgressPanel() {
 
   const handleStart = async () => {
     const hasOperation =
-      Boolean(sealImagePath) ||
+      (sealEnabled && Boolean(sealImagePath)) ||
       (watermark.enabled && watermark.text.trim().length > 0) ||
       (cert.enabled && cert.cert_path.length > 0);
     if (files.length === 0 || !hasOperation) return;
 
     const options: SealOptions = {
-      seal_image_path: sealImagePath,
+      seal_image_path: sealEnabled ? sealImagePath : "",
       seal_width: sealWidth,
       seal_height: sealHeight,
       seal_opacity: sealOpacity,
@@ -68,30 +69,55 @@ export default function ProgressPanel() {
     ? Math.round((batchProgress.done / batchProgress.total) * 100)
     : 0;
   const canStart =
-    Boolean(sealImagePath) ||
+    (sealEnabled && Boolean(sealImagePath)) ||
     (watermark.enabled && watermark.text.trim().length > 0) ||
     (cert.enabled && cert.cert_path.length > 0);
 
   return (
-    <div className="progress-panel">
-      <div className="progress-bar-container">
-        <div className="progress-bar" style={{ width: `${progressPct}%` }} />
+    <div className="flex items-center gap-4 px-3 py-2 bg-content1 border-b border-divider">
+      {/* 进度条 */}
+      <div className="flex-1 min-w-0">
+        <Progress
+          aria-label="批处理进度"
+          value={progressPct}
+          color={progressPct === 100 ? "success" : "primary"}
+          size="sm"
+          className="w-full"
+        />
+        <div className="text-[11px] text-foreground-500 mt-0.5">
+          {batchProgress
+            ? `${batchProgress.done} / ${batchProgress.total} 文件`
+            : "就绪"}
+        </div>
       </div>
-      <div className="progress-info">
-        {batchProgress
-          ? `${batchProgress.done} / ${batchProgress.total}`
-          : "就绪"}
-      </div>
-      <div className="progress-buttons">
-        <button onClick={handleStart} disabled={batchRunning || files.length === 0 || !canStart}>
+
+      {/* 操作按钮 */}
+      <div className="flex gap-2 shrink-0">
+        <Button
+          size="sm"
+          color="primary"
+          onPress={handleStart}
+          isDisabled={batchRunning || files.length === 0 || !canStart}
+        >
           开始
-        </button>
-        <button onClick={handlePauseResume} disabled={!batchRunning}>
+        </Button>
+        <Button
+          size="sm"
+          variant="flat"
+          onPress={handlePauseResume}
+          isDisabled={!batchRunning}
+        >
           {batchPaused ? "恢复" : "暂停"}
-        </button>
-        <button onClick={handleCancel} disabled={!batchRunning}>
+        </Button>
+        <Button
+          size="sm"
+          variant="flat"
+          color="danger"
+          onPress={handleCancel}
+          isDisabled={!batchRunning}
+        >
           取消
-        </button>
+        </Button>
       </div>
     </div>
   );
