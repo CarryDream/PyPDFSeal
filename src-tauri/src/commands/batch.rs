@@ -4,7 +4,7 @@ use crate::db::{BatchRunSummary, Database};
 use crate::error::AppError;
 use rayon::prelude::*;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{mpsc, Arc, Mutex};
+use std::sync::{Arc, Mutex, mpsc};
 use std::time::Instant;
 use tauri::{Emitter, Manager};
 
@@ -112,22 +112,11 @@ pub async fn batch_process(
         let state_for_rayon = state.clone();
         rayon::scope(|s| {
             s.spawn(|_| {
-                files.par_iter().enumerate().for_each_with(tx, |tx, (i, file)| {
-                    // Check cancel
-                    if state_for_rayon.cancelled.load(Ordering::Relaxed) {
-                        let _ = tx.send(FileResult {
-                            index: i,
-                            file: file.clone(),
-                            status: "cancelled".into(),
-                            output: None,
-                            error: None,
-                            elapsed_ms: 0,
-                        });
-                        return;
-                    }
-
-                    // Busy-wait for unpause
-                    while state_for_rayon.paused.load(Ordering::Relaxed) {
+                files
+                    .par_iter()
+                    .enumerate()
+                    .for_each_with(tx, |tx, (i, file)| {
+                        // Check cancel
                         if state_for_rayon.cancelled.load(Ordering::Relaxed) {
                             let _ = tx.send(FileResult {
                                 index: i,
@@ -139,36 +128,50 @@ pub async fn batch_process(
                             });
                             return;
                         }
-                        std::thread::sleep(std::time::Duration::from_millis(100));
-                    }
 
-                    let file_start = Instant::now();
-                    let result = pipeline::process_task_with_assets(file, &options, &assets);
-                    let file_elapsed = file_start.elapsed().as_millis() as i64;
-
-                    let (status, output, error) = match result {
-                        Ok(output) => ("ok".to_string(), Some(output), None),
-                        Err(AppError::Signature(message))
-                            if message.contains("already contains a signature") =>
-                        {
-                            (
-                                "skipped".to_string(),
-                                None,
-                                Some("已包含数字签名，跳过以避免破坏原签名".to_string()),
-                            )
+                        // Busy-wait for unpause
+                        while state_for_rayon.paused.load(Ordering::Relaxed) {
+                            if state_for_rayon.cancelled.load(Ordering::Relaxed) {
+                                let _ = tx.send(FileResult {
+                                    index: i,
+                                    file: file.clone(),
+                                    status: "cancelled".into(),
+                                    output: None,
+                                    error: None,
+                                    elapsed_ms: 0,
+                                });
+                                return;
+                            }
+                            std::thread::sleep(std::time::Duration::from_millis(100));
                         }
-                        Err(e) => ("error".to_string(), None, Some(e.to_string())),
-                    };
 
-                    let _ = tx.send(FileResult {
-                        index: i,
-                        file: file.clone(),
-                        status,
-                        output,
-                        error,
-                        elapsed_ms: file_elapsed,
+                        let file_start = Instant::now();
+                        let result = pipeline::process_task_with_assets(file, &options, &assets);
+                        let file_elapsed = file_start.elapsed().as_millis() as i64;
+
+                        let (status, output, error) = match result {
+                            Ok(output) => ("ok".to_string(), Some(output), None),
+                            Err(AppError::Signature(message))
+                                if message.contains("already contains a signature") =>
+                            {
+                                (
+                                    "skipped".to_string(),
+                                    None,
+                                    Some("已包含数字签名，跳过以避免破坏原签名".to_string()),
+                                )
+                            }
+                            Err(e) => ("error".to_string(), None, Some(e.to_string())),
+                        };
+
+                        let _ = tx.send(FileResult {
+                            index: i,
+                            file: file.clone(),
+                            status,
+                            output,
+                            error,
+                            elapsed_ms: file_elapsed,
+                        });
                     });
-                });
             });
         });
 

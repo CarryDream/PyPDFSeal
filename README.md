@@ -6,11 +6,12 @@
 
   <p>
     <a href="https://github.com/CarryDream/PyPDFSeal">
-      <img src="https://img.shields.io/badge/Version-0.1.3-blue?style=flat-square" alt="Version">
+      <img src="https://img.shields.io/badge/Version-1.0.0-blue?style=flat-square" alt="Version">
     </a>
     <img src="https://img.shields.io/badge/Tauri-v2-orange?style=flat-square" alt="Tauri">
     <img src="https://img.shields.io/badge/Backend-Rust-red?style=flat-square" alt="Rust">
     <img src="https://img.shields.io/badge/Frontend-React-61DAFB?style=flat-square" alt="React">
+    <img src="https://img.shields.io/badge/UI-HeroUI-purple?style=flat-square" alt="HeroUI">
     <img src="https://img.shields.io/badge/License-CC--BY--NC--SA--4.0-lightgrey?style=flat-square" alt="License">
   </p>
 
@@ -33,13 +34,15 @@
 - 支持 PNG 透明印章图片
 - 多种定位方式：固定位置、关键字定位、坐标定位
 - 批量处理多个 PDF 文件
-- 支持自定义印章大小、透明度、旋转角度
+- 支持自定义印章大小、透明度
+- PDF 预览区拖拽定位印章
 
 ### 💧 高级水印功能
-- 文本水印与图片水印
+- 文本水印
 - 支持系统字体加载
 - 多种布局方式（平铺、居中）
 - 可调节水印透明度、旋转角度、颜色、字号
+- 蜂窝式颜色选择器，快速选取常用颜色
 
 ### ✍️ 数字签名
 - 支持 PKCS#12 (.p12 / .pfx) 证书
@@ -48,11 +51,27 @@
 - 支持签名原因、位置、联系方式等信息
 
 ### ⚙️ 实用功能
-- 实时预览效果
-- 自定义输出文件名规则
+- 实时 PDF 预览与缩放（Ctrl+滚轮）
+- 自定义输出文件名规则（前缀/后缀/不添加）
+- 输出目录结构选择（平铺/按来源文件夹分组）
+- 文件列表分页浏览
+- 批量处理进度条与实时日志
+- 处理完成摘要报告
+- 导出处理记录为 Excel
 - 自动检查更新
 - 系统托盘支持
-- 跨平台支持（Windows / macOS / Linux）
+
+### 🎨 界面特性
+- 基于 HeroUI v2 组件库，现代化界面设计
+- 浅色 / 深色 / 跟随系统三种主题模式
+- 可折叠侧栏面板
+- 可调节底部日志面板高度
+- Toast 通知反馈
+
+### 🖥️ 跨平台支持
+- Windows (x64)
+- macOS (Intel / Apple Silicon)
+- Linux (x64 / ARM64)
 
 ## 📦 安装指南
 
@@ -70,7 +89,7 @@ irm https://raw.githubusercontent.com/CarryDream/PyPDFSeal/main/install.ps1 | ie
 
 支持指定版本：
 ```bash
-curl -fsSL https://raw.githubusercontent.com/CarryDream/PyPDFSeal/main/install.sh | VERSION=0.1.3 bash
+curl -fsSL https://raw.githubusercontent.com/CarryDream/PyPDFSeal/main/install.sh | VERSION=1.0.0 bash
 ```
 
 ### 方式二：手动下载
@@ -78,7 +97,7 @@ curl -fsSL https://raw.githubusercontent.com/CarryDream/PyPDFSeal/main/install.s
 前往 [GitHub Releases](https://github.com/CarryDream/PyPDFSeal/releases) 下载对应平台的安装包：
 
 - **Windows**: `PyPDFSeal_版本号_x64-setup.exe`
-- **macOS**: `.dmg` 文件
+- **macOS**: `.dmg` 文件（支持 Intel 和 Apple Silicon）
 - **Linux**: `.deb` 或 `.AppImage`
 
 ### 方式三：从源码构建
@@ -87,13 +106,14 @@ curl -fsSL https://raw.githubusercontent.com/CarryDream/PyPDFSeal/main/install.s
 
 ## 🚀 使用说明
 
-1. 启动应用后，添加需要处理的 PDF 文件
-2. 在「印章」面板选择印章图片并设置位置参数
-3. 在「水印」面板配置水印内容（可选）
-4. 在「证书」面板导入数字证书并配置签名信息（可选）
-5. 点击「开始处理」即可批量生成已盖章/签名的 PDF
-
-详细操作可参考应用内界面提示。
+1. 启动应用后，点击「添加文件」或「添加目录」导入 PDF 文件
+2. 在左侧「印章」面板选择印章图片、设置尺寸和透明度
+3. 在 PDF 预览区拖拽印章到目标位置，或在「位置」面板精确设置
+4. 在「水印」面板配置水印内容（可选）
+5. 在「证书」面板导入数字证书并配置签名信息（可选）
+6. 在右侧「设置」面板配置输出目录和文件名规则
+7. 点击「开始处理」即可批量生成已盖章/签名的 PDF
+8. 处理完成后查看日志面板的摘要报告
 
 ## 🛠️ 构建指南
 
@@ -101,7 +121,18 @@ curl -fsSL https://raw.githubusercontent.com/CarryDream/PyPDFSeal/main/install.s
 
 - Node.js >= 20
 - Rust (最新稳定版)
-- pnpm / npm / yarn
+- npm
+
+### 系统依赖 (Linux)
+
+```bash
+sudo apt-get update
+sudo apt-get install -y \
+  libwebkit2gtk-4.1-dev build-essential curl wget file libssl-dev \
+  libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf \
+  pkg-config libsoup-3.0-dev javascriptcoregtk-4.1 \
+  libjavascriptcoregtk-4.1-dev libnm-dev xdg-utils
+```
 
 ### 开发
 

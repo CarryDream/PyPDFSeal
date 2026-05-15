@@ -102,7 +102,8 @@ impl Database {
         let conn = self.conn.lock().unwrap();
         let tx = conn.unchecked_transaction()?;
         {
-            let mut stmt = tx.prepare("INSERT OR REPLACE INTO config (key, value) VALUES (?1, ?2)")?;
+            let mut stmt =
+                tx.prepare("INSERT OR REPLACE INTO config (key, value) VALUES (?1, ?2)")?;
             for (key, value) in entries {
                 stmt.execute(params![key, value])?;
             }
@@ -247,7 +248,9 @@ impl Database {
         };
 
         let total: u32 = if has_filter {
-            conn.query_row(&count_sql, params![status_filter.unwrap()], |row| row.get(0))?
+            conn.query_row(&count_sql, params![status_filter.unwrap()], |row| {
+                row.get(0)
+            })?
         } else {
             conn.query_row(&count_sql, [], |row| row.get(0))?
         };
@@ -256,7 +259,10 @@ impl Database {
         let mut stmt = conn.prepare(&query_sql)?;
 
         let rows = if has_filter {
-            stmt.query_map(params![status_filter.unwrap(), page_size, offset], map_file_row)?
+            stmt.query_map(
+                params![status_filter.unwrap(), page_size, offset],
+                map_file_row,
+            )?
         } else {
             stmt.query_map(params![page_size, offset], map_file_row)?
         };
@@ -300,25 +306,39 @@ impl Database {
         let headers = ["ID", "文件路径", "状态", "输出路径", "错误信息", "耗时(ms)"];
         let bold = rust_xlsxwriter::Format::new().set_bold();
         for (col, header) in headers.iter().enumerate() {
-            sheet.write_string_with_format(0, col as u16, *header, &bold).map_err(|e| {
-                crate::error::AppError::Export(e.to_string())
-            })?;
+            sheet
+                .write_string_with_format(0, col as u16, *header, &bold)
+                .map_err(|e| crate::error::AppError::Export(e.to_string()))?;
         }
 
         // Data rows
         for (i, file) in files.iter().enumerate() {
             let row = (i as u32) + 1;
-            sheet.write_number(row, 0, file.id as f64).map_err(|e| crate::error::AppError::Export(e.to_string()))?;
-            sheet.write_string(row, 1, &file.file_path).map_err(|e| crate::error::AppError::Export(e.to_string()))?;
-            sheet.write_string(row, 2, &file.status).map_err(|e| crate::error::AppError::Export(e.to_string()))?;
-            sheet.write_string(row, 3, file.output_path.as_deref().unwrap_or("")).map_err(|e| crate::error::AppError::Export(e.to_string()))?;
-            sheet.write_string(row, 4, file.error_message.as_deref().unwrap_or("")).map_err(|e| crate::error::AppError::Export(e.to_string()))?;
+            sheet
+                .write_number(row, 0, file.id as f64)
+                .map_err(|e| crate::error::AppError::Export(e.to_string()))?;
+            sheet
+                .write_string(row, 1, &file.file_path)
+                .map_err(|e| crate::error::AppError::Export(e.to_string()))?;
+            sheet
+                .write_string(row, 2, &file.status)
+                .map_err(|e| crate::error::AppError::Export(e.to_string()))?;
+            sheet
+                .write_string(row, 3, file.output_path.as_deref().unwrap_or(""))
+                .map_err(|e| crate::error::AppError::Export(e.to_string()))?;
+            sheet
+                .write_string(row, 4, file.error_message.as_deref().unwrap_or(""))
+                .map_err(|e| crate::error::AppError::Export(e.to_string()))?;
             if let Some(ms) = file.processing_time_ms {
-                sheet.write_number(row, 5, ms as f64).map_err(|e| crate::error::AppError::Export(e.to_string()))?;
+                sheet
+                    .write_number(row, 5, ms as f64)
+                    .map_err(|e| crate::error::AppError::Export(e.to_string()))?;
             }
         }
 
-        workbook.save(path).map_err(|e| crate::error::AppError::Export(e.to_string()))?;
+        workbook
+            .save(path)
+            .map_err(|e| crate::error::AppError::Export(e.to_string()))?;
         Ok(())
     }
 }
@@ -365,7 +385,16 @@ fn chrono_now() -> String {
     let month_days: [u64; 12] = [
         31,
         if leap { 29 } else { 28 },
-        31, 30, 31, 30, 31, 31, 30, 31, 30, 31,
+        31,
+        30,
+        31,
+        30,
+        31,
+        31,
+        30,
+        31,
+        30,
+        31,
     ];
     let mut mo = 0;
     for (i, &d) in month_days.iter().enumerate() {

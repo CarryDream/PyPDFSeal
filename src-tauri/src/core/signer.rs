@@ -20,17 +20,21 @@ pub fn has_existing_signature(path: &str) -> Result<bool> {
     let mut buf = Vec::with_capacity(chunk_size as usize * 2);
 
     let head_read = file_len.min(chunk_size);
-    file.by_ref().take(head_read).read_to_end(&mut buf).map_err(AppError::Io)?;
+    file.by_ref()
+        .take(head_read)
+        .read_to_end(&mut buf)
+        .map_err(AppError::Io)?;
 
     if file_len > chunk_size {
         let tail_start = file_len.saturating_sub(chunk_size);
-        file.seek(SeekFrom::Start(tail_start)).map_err(AppError::Io)?;
-        file.take(chunk_size).read_to_end(&mut buf).map_err(AppError::Io)?;
+        file.seek(SeekFrom::Start(tail_start))
+            .map_err(AppError::Io)?;
+        file.take(chunk_size)
+            .read_to_end(&mut buf)
+            .map_err(AppError::Io)?;
     }
 
-    Ok(buf
-        .windows(b"/ByteRange".len())
-        .any(|w| w == b"/ByteRange"))
+    Ok(buf.windows(b"/ByteRange".len()).any(|w| w == b"/ByteRange"))
 }
 
 /// Sign a PDF file with a detached PKCS#7 signature.
@@ -54,7 +58,6 @@ pub fn sign_pdf_with_keys(
     chain: &Stack<X509>,
     cfg: &CertConfig,
 ) -> Result<()> {
-
     let mut doc = lopdf::Document::load(input_path).map_err(|e| AppError::Pdf(e.to_string()))?;
     let sig_id = signature_dict::inject_signature_dict(
         &mut doc,

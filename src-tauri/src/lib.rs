@@ -127,11 +127,11 @@ pub fn run() {
         .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
-            let data_dir = app.path().app_data_dir().unwrap_or_else(|_| {
-                std::path::PathBuf::from(".")
-            });
-            let database = db::Database::open(&data_dir)
-                .expect("failed to open database");
+            let data_dir = app
+                .path()
+                .app_data_dir()
+                .unwrap_or_else(|_| std::path::PathBuf::from("."));
+            let database = db::Database::open(&data_dir).expect("failed to open database");
             app.manage(database);
             build_tray(app)?;
             Ok(())

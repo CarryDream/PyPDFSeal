@@ -9,7 +9,8 @@ pub fn db_get_config(app: tauri::AppHandle) -> Result<serde_json::Value, String>
     let json_map: serde_json::Map<String, serde_json::Value> = map
         .into_iter()
         .filter_map(|(k, v)| {
-            let val: serde_json::Value = serde_json::from_str(&v).unwrap_or(serde_json::Value::String(v));
+            let val: serde_json::Value =
+                serde_json::from_str(&v).unwrap_or(serde_json::Value::String(v));
             Some((k, val))
         })
         .collect();
@@ -36,7 +37,10 @@ pub fn db_set_config_batch(
 }
 
 #[tauri::command]
-pub async fn db_import_files(app: tauri::AppHandle, files: Vec<String>) -> Result<Vec<i64>, String> {
+pub async fn db_import_files(
+    app: tauri::AppHandle,
+    files: Vec<String>,
+) -> Result<Vec<i64>, String> {
     let db = app.state::<Database>();
     let total = files.len();
     let batch_size = 500;

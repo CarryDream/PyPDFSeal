@@ -34,7 +34,8 @@ impl PreparedAssets {
             None
         };
 
-        let watermark_rendered = if options.watermark.enabled && !options.watermark.text.is_empty() {
+        let watermark_rendered = if options.watermark.enabled && !options.watermark.text.is_empty()
+        {
             Some(
                 watermark_image::render_watermark(
                     &options.watermark.text,
