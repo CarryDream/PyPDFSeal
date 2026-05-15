@@ -1,8 +1,9 @@
 use std::path::{Path, PathBuf};
+use tauri::Emitter;
 
-/// Scan a directory recursively for PDF files.
+/// Scan a directory recursively for PDF files, emitting progress events.
 #[tauri::command]
-pub fn scan_pdf_dir(dir: String) -> Result<Vec<String>, String> {
+pub async fn scan_pdf_dir(app: tauri::AppHandle, dir: String) -> Result<Vec<String>, String> {
     let path = Path::new(&dir);
     if !path.is_dir() {
         return Err(format!("Not a directory: {}", dir));
@@ -10,10 +11,33 @@ pub fn scan_pdf_dir(dir: String) -> Result<Vec<String>, String> {
 
     let mut pdfs = Vec::new();
     let mut stack = vec![path.to_path_buf()];
+    let mut scanned_dirs: u32 = 0;
 
     while let Some(current) = stack.pop() {
         scan_pdf_dir_entry(&current, &mut stack, &mut pdfs)?;
+        scanned_dirs += 1;
+
+        // Emit progress every 10 directories
+        if scanned_dirs % 10 == 0 {
+            let _ = app.emit(
+                "scan-progress",
+                serde_json::json!({
+                    "found": pdfs.len(),
+                    "dirs": scanned_dirs,
+                }),
+            );
+            tokio::task::yield_now().await;
+        }
     }
+
+    // Final progress
+    let _ = app.emit(
+        "scan-progress",
+        serde_json::json!({
+            "found": pdfs.len(),
+            "dirs": scanned_dirs,
+        }),
+    );
 
     pdfs.sort();
     Ok(pdfs)

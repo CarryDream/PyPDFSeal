@@ -1,4 +1,4 @@
-use tauri::Manager;
+use tauri::{Emitter, Manager};
 
 use crate::db::{BatchFilesPage, Database};
 
@@ -36,9 +36,28 @@ pub fn db_set_config_batch(
 }
 
 #[tauri::command]
-pub fn db_import_files(app: tauri::AppHandle, files: Vec<String>) -> Result<Vec<i64>, String> {
+pub async fn db_import_files(app: tauri::AppHandle, files: Vec<String>) -> Result<Vec<i64>, String> {
     let db = app.state::<Database>();
-    db.import_files(&files).map_err(|e| e.to_string())
+    let total = files.len();
+    let batch_size = 500;
+    let mut all_ids = Vec::with_capacity(total);
+
+    for (i, chunk) in files.chunks(batch_size).enumerate() {
+        let ids = db.import_files(chunk).map_err(|e| e.to_string())?;
+        all_ids.extend(ids);
+
+        let done = (i + 1) * batch_size;
+        let _ = app.emit(
+            "import-progress",
+            serde_json::json!({
+                "done": done.min(total),
+                "total": total,
+            }),
+        );
+        tokio::task::yield_now().await;
+    }
+
+    Ok(all_ids)
 }
 
 #[tauri::command]

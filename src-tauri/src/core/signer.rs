@@ -11,13 +11,30 @@ use openssl::x509::X509;
 const MAX_CMS_SIG_SIZE: usize = 32 * 1024;
 
 pub fn has_existing_signature(path: &str) -> Result<bool> {
-    let bytes = std::fs::read(path).map_err(AppError::Io)?;
-    Ok(bytes
+    use std::io::{Read, Seek, SeekFrom};
+    let mut file = std::fs::File::open(path).map_err(AppError::Io)?;
+    let file_len = file.metadata().map_err(AppError::Io)?.len();
+
+    // Read first 8KB and last 8KB — signatures are typically near the end
+    let chunk_size: u64 = 8192;
+    let mut buf = Vec::with_capacity(chunk_size as usize * 2);
+
+    let head_read = file_len.min(chunk_size);
+    file.by_ref().take(head_read).read_to_end(&mut buf).map_err(AppError::Io)?;
+
+    if file_len > chunk_size {
+        let tail_start = file_len.saturating_sub(chunk_size);
+        file.seek(SeekFrom::Start(tail_start)).map_err(AppError::Io)?;
+        file.take(chunk_size).read_to_end(&mut buf).map_err(AppError::Io)?;
+    }
+
+    Ok(buf
         .windows(b"/ByteRange".len())
         .any(|w| w == b"/ByteRange"))
 }
 
 /// Sign a PDF file with a detached PKCS#7 signature.
+#[allow(dead_code)]
 pub fn sign_pdf(input_path: &str, output_path: &str, cfg: &CertConfig) -> Result<()> {
     if !cfg.enabled || cfg.cert_path.is_empty() {
         std::fs::copy(input_path, output_path).map_err(AppError::Io)?;
@@ -25,6 +42,18 @@ pub fn sign_pdf(input_path: &str, output_path: &str, cfg: &CertConfig) -> Result
     }
 
     let (pkey, cert, chain) = parse_pkcs12(&cfg.cert_path, &cfg.password)?;
+    sign_pdf_with_keys(input_path, output_path, &pkey, &cert, &chain, cfg)
+}
+
+/// Sign a PDF with pre-parsed PKCS#12 keys (avoids re-parsing cert per file).
+pub fn sign_pdf_with_keys(
+    input_path: &str,
+    output_path: &str,
+    pkey: &PKey<Private>,
+    cert: &X509,
+    chain: &Stack<X509>,
+    cfg: &CertConfig,
+) -> Result<()> {
 
     let mut doc = lopdf::Document::load(input_path).map_err(|e| AppError::Pdf(e.to_string()))?;
     let sig_id = signature_dict::inject_signature_dict(
@@ -66,7 +95,7 @@ pub fn sign_pdf(input_path: &str, output_path: &str, cfg: &CertConfig) -> Result
     Ok(())
 }
 
-fn parse_pkcs12(path: &str, password: &str) -> Result<(PKey<Private>, X509, Stack<X509>)> {
+pub fn parse_pkcs12(path: &str, password: &str) -> Result<(PKey<Private>, X509, Stack<X509>)> {
     let pfx_bytes = std::fs::read(path).map_err(AppError::Io)?;
     let pkcs12 = Pkcs12::from_der(&pfx_bytes)
         .map_err(|e| AppError::Signature(format!("PKCS#12 parse error: {}", e)))?;

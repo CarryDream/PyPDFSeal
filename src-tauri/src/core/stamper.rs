@@ -24,17 +24,14 @@ pub fn load_seal_image(path: &str, opacity: f64) -> Result<DynamicImage> {
     Ok(DynamicImage::ImageRgba8(rgba))
 }
 
-pub fn stamp_pdf(
-    input_path: &str,
-    output_path: &str,
+/// Stamp an already-loaded in-memory Document (avoids re-loading from disk).
+pub fn stamp_document(
+    doc: &mut lopdf::Document,
     seal_img: &DynamicImage,
     placements: &[Placement],
 ) -> Result<()> {
-    let mut doc = lopdf::Document::load(input_path)
-        .map_err(|e| crate::error::AppError::Pdf(e.to_string()))?;
-
     let rgba = seal_img.to_rgba8();
-    let image_id = xobject::add_rgba_image(&mut doc, &rgba);
+    let image_id = xobject::add_rgba_image(doc, &rgba);
 
     let page_ids = doc.get_pages();
     let mut by_page: BTreeMap<usize, Vec<ImageDraw>> = BTreeMap::new();
@@ -61,11 +58,9 @@ pub fn stamp_pdf(
             .copied()
             .ok_or_else(|| AppError::Pdf(format!("page {} not found", page_no + 1)))?;
         let resource_name = format!("Seal{}_{}", page_no + 1, image_id.0);
-        xobject::add_image_draws_to_page(&mut doc, page_id, &resource_name, image_id, &draws)?;
+        xobject::add_image_draws_to_page(doc, page_id, &resource_name, image_id, &draws)?;
     }
 
-    doc.save(output_path)
-        .map_err(|e| crate::error::AppError::Pdf(e.to_string()))?;
     Ok(())
 }
 

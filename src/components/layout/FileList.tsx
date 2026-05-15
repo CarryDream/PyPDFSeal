@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
-import { Button, Checkbox, Pagination, addToast } from "@heroui/react";
+import { Button, Checkbox, Pagination, Progress, addToast } from "@heroui/react";
+import { listen } from "@tauri-apps/api/event";
 import { useConfigStore } from "../../store/configStore";
 import { scanPdfDir, dbImportFiles } from "../../utils/ipc";
 
@@ -19,6 +20,16 @@ export default function FileList() {
     setFileListPage,
   } = useConfigStore();
   const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState<{ label: string; done: number; total: number } | null>(null);
+  const unlistenRefs = useRef<Array<() => void>>([]);
+
+  const cleanupListeners = useCallback(() => {
+    unlistenRefs.current.forEach((fn) => fn());
+    unlistenRefs.current = [];
+  }, []);
+
+  useEffect(() => cleanupListeners, [cleanupListeners]);
 
   const totalPages = Math.max(1, Math.ceil(files.length / fileListPageSize));
   const pageFiles = useMemo(() => {
@@ -71,22 +82,39 @@ export default function FileList() {
       multiple: true,
       filters: [{ name: "PDF", extensions: ["pdf"] }],
     });
-    if (sel) {
-      const paths = Array.isArray(sel) ? sel : [sel];
-      const existing = new Set(files);
-      const newPaths = paths.filter((p) => !existing.has(p));
-      const dupCount = paths.length - newPaths.length;
-      if (newPaths.length > 0) {
-        addFiles(newPaths);
-        try { await dbImportFiles(newPaths); } catch (e) { console.warn("DB import:", e); }
-      }
-      if (dupCount > 0 && newPaths.length > 0) {
-        addToast({ title: `新增 ${newPaths.length} 个，${dupCount} 个已存在`, color: "warning", timeout: 2500 });
-      } else if (dupCount > 0) {
-        addToast({ title: `${dupCount} 个文件已存在`, color: "warning", timeout: 2000 });
-      } else {
-        addToast({ title: `已添加 ${newPaths.length} 个文件`, color: "success", timeout: 2000 });
-      }
+    if (!sel) return;
+
+    const paths = Array.isArray(sel) ? sel : [sel];
+    const existing = new Set(files);
+    const newPaths = paths.filter((p) => !existing.has(p));
+    const dupCount = paths.length - newPaths.length;
+
+    if (newPaths.length > 0) {
+      setLoading(true);
+      setProgress({ label: "导入文件...", done: 0, total: newPaths.length });
+      cleanupListeners();
+
+      const unlistenImport = await listen<{ done: number; total: number }>(
+        "import-progress",
+        (e) => {
+          setProgress({ label: "导入文件...", done: e.payload.done, total: e.payload.total });
+        },
+      );
+      unlistenRefs.current.push(unlistenImport);
+
+      addFiles(newPaths);
+      try { await dbImportFiles(newPaths); } catch (e) { console.warn("DB import:", e); }
+      cleanupListeners();
+      setProgress(null);
+      setLoading(false);
+    }
+
+    if (dupCount > 0 && newPaths.length > 0) {
+      addToast({ title: `新增 ${newPaths.length} 个，${dupCount} 个已存在`, color: "warning", timeout: 2500 });
+    } else if (dupCount > 0) {
+      addToast({ title: `${dupCount} 个文件已存在`, color: "warning", timeout: 2000 });
+    } else {
+      addToast({ title: `已添加 ${newPaths.length} 个文件`, color: "success", timeout: 2000 });
     }
   };
 
@@ -99,31 +127,68 @@ export default function FileList() {
 
   const handleAddDir = async () => {
     const dir = await open({ directory: true });
-    if (dir) {
-      try {
-        const pdfs = await scanPdfDir(dir as string);
-        if (pdfs.length > 0) {
-          const existing = new Set(files);
-          const newPaths = pdfs.filter((p) => !existing.has(p));
-          const dupCount = pdfs.length - newPaths.length;
-          if (newPaths.length > 0) {
-            addFiles(newPaths);
-            try { await dbImportFiles(newPaths); } catch (e) { console.warn("DB import:", e); }
-          }
-          if (dupCount > 0 && newPaths.length > 0) {
-            addToast({ title: `新增 ${newPaths.length} 个，${dupCount} 个已存在`, color: "warning", timeout: 2500 });
-          } else if (dupCount > 0) {
-            addToast({ title: `${dupCount} 个文件已存在`, color: "warning", timeout: 2000 });
-          } else {
-            addToast({ title: `从目录导入 ${newPaths.length} 个文件`, color: "success", timeout: 2000 });
-          }
-        } else {
-          addToast({ title: "目录中未找到 PDF 文件", color: "warning", timeout: 2000 });
-        }
-      } catch (e) {
-        console.error("Failed to scan directory:", e);
-        addToast({ title: "目录扫描失败", color: "danger", timeout: 2000 });
+    if (!dir) return;
+
+    setLoading(true);
+    setProgress({ label: "扫描目录...", done: 0, total: 0 });
+    cleanupListeners();
+
+    // Listen for scan progress
+    const unlistenScan = await listen<{ found: number; dirs: number }>(
+      "scan-progress",
+      (e) => {
+        setProgress({ label: "扫描目录...", done: e.payload.found, total: 0 });
+      },
+    );
+    unlistenRefs.current.push(unlistenScan);
+
+    try {
+      const pdfs = await scanPdfDir(dir as string);
+      cleanupListeners();
+
+      if (pdfs.length === 0) {
+        setProgress(null);
+        setLoading(false);
+        addToast({ title: "目录中未找到 PDF 文件", color: "warning", timeout: 2000 });
+        return;
       }
+
+      const existing = new Set(files);
+      const newPaths = pdfs.filter((p) => !existing.has(p));
+      const dupCount = pdfs.length - newPaths.length;
+
+      if (newPaths.length > 0) {
+        // Listen for import progress
+        setProgress({ label: "导入文件...", done: 0, total: newPaths.length });
+        const unlistenImport = await listen<{ done: number; total: number }>(
+          "import-progress",
+          (e) => {
+            setProgress({ label: "导入文件...", done: e.payload.done, total: e.payload.total });
+          },
+        );
+        unlistenRefs.current.push(unlistenImport);
+
+        addFiles(newPaths);
+        try { await dbImportFiles(newPaths); } catch (e) { console.warn("DB import:", e); }
+        cleanupListeners();
+      }
+
+      setProgress(null);
+      setLoading(false);
+
+      if (dupCount > 0 && newPaths.length > 0) {
+        addToast({ title: `新增 ${newPaths.length} 个，${dupCount} 个已存在`, color: "warning", timeout: 2500 });
+      } else if (dupCount > 0) {
+        addToast({ title: `${dupCount} 个文件已存在`, color: "warning", timeout: 2000 });
+      } else {
+        addToast({ title: `从目录导入 ${newPaths.length} 个文件`, color: "success", timeout: 2000 });
+      }
+    } catch (e) {
+      cleanupListeners();
+      setProgress(null);
+      setLoading(false);
+      console.error("Failed to scan directory:", e);
+      addToast({ title: "目录扫描失败", color: "danger", timeout: 2000 });
     }
   };
 
@@ -150,19 +215,35 @@ export default function FileList() {
           </div>
         </div>
         <div className="grid grid-cols-4 gap-1.5 px-3 pb-2">
-          <Button size="sm" variant="flat" onPress={handleAddFiles} className="min-w-0">
+          <Button size="sm" variant="flat" onPress={handleAddFiles} isDisabled={loading} className="min-w-0">
             添加
           </Button>
-          <Button size="sm" variant="flat" onPress={handleAddDir} className="min-w-0">
+          <Button size="sm" variant="flat" onPress={handleAddDir} isDisabled={loading} className="min-w-0">
             目录
           </Button>
-          <Button size="sm" variant="flat" color="danger" onPress={handleDeleteSelected} isDisabled={selected.size === 0} className="min-w-0">
+          <Button size="sm" variant="flat" color="danger" onPress={handleDeleteSelected} isDisabled={selected.size === 0 || loading} className="min-w-0">
             删除
           </Button>
-          <Button size="sm" variant="flat" onPress={handleClearAll} className="min-w-0">
+          <Button size="sm" variant="flat" onPress={handleClearAll} isDisabled={loading} className="min-w-0">
             清空
           </Button>
         </div>
+        {progress && (
+          <div className="px-3 pb-2">
+            <Progress
+              size="sm"
+              isIndeterminate={progress.total === 0}
+              value={progress.total > 0 ? (progress.done / progress.total) * 100 : 0}
+              aria-label={progress.label}
+              className="w-full"
+            />
+            <div className="text-[11px] text-foreground-500 mt-0.5">
+              {progress.total > 0
+                ? `${progress.label} ${progress.done} / ${progress.total}`
+                : `${progress.label} 已找到 ${progress.done} 个 PDF`}
+            </div>
+          </div>
+        )}
       </div>
 
       {files.length > 0 && (

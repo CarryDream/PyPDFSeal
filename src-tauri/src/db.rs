@@ -172,6 +172,7 @@ impl Database {
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub fn update_file_status(
         &self,
         id: i64,
@@ -185,6 +186,22 @@ impl Database {
             "UPDATE batch_files SET status = ?1, output_path = ?2, error_message = ?3, processing_time_ms = ?4 WHERE id = ?5",
             params![status, output_path, error_message, processing_time_ms, id],
         )?;
+        Ok(())
+    }
+
+    pub fn update_files_status_batch(
+        &self,
+        entries: &[(i64, &str, Option<&str>, Option<&str>, Option<i64>)],
+    ) -> Result<()> {
+        let mut conn = self.conn.lock().unwrap();
+        let tx = conn.transaction()?;
+        for &(id, status, output_path, error_message, processing_time_ms) in entries {
+            tx.execute(
+                "UPDATE batch_files SET status = ?1, output_path = ?2, error_message = ?3, processing_time_ms = ?4 WHERE id = ?5",
+                params![status, output_path, error_message, processing_time_ms, id],
+            )?;
+        }
+        tx.commit()?;
         Ok(())
     }
 

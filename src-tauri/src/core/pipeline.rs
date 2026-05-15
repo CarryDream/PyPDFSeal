@@ -6,10 +6,75 @@ use super::watermarker;
 use crate::error::AppError;
 use crate::error::Result;
 use crate::pdf::document;
+use crate::text::watermark_image;
+use image::DynamicImage;
+use openssl::pkey::{PKey, Private};
+use openssl::stack::Stack;
+use openssl::x509::X509;
 use std::path::Path;
-use tempfile::NamedTempFile;
 
-pub fn process_task(input_path: &str, options: &SealOptions) -> Result<String> {
+/// Pre-computed assets shared across all files in a batch.
+pub struct PreparedAssets {
+    pub seal_img: Option<DynamicImage>,
+    pub watermark_rendered: Option<watermark_image::WatermarkRenderResult>,
+    pub cert_keys: Option<(PKey<Private>, X509, Stack<X509>)>,
+}
+
+impl PreparedAssets {
+    pub fn prepare(options: &SealOptions) -> Result<Self> {
+        let seal_img = if !options.seal_image_path.is_empty()
+            && options.seal_width > 0.0
+            && options.seal_height > 0.0
+        {
+            Some(stamper::load_seal_image(
+                &options.seal_image_path,
+                options.seal_opacity,
+            )?)
+        } else {
+            None
+        };
+
+        let watermark_rendered = if options.watermark.enabled && !options.watermark.text.is_empty() {
+            Some(
+                watermark_image::render_watermark(
+                    &options.watermark.text,
+                    &options.watermark.font_family,
+                    &options.watermark.font_path,
+                    options.watermark.font_size,
+                    options.watermark.opacity,
+                    options.watermark.rotation,
+                    &options.watermark.color,
+                )
+                .map_err(AppError::Font)?,
+            )
+        } else {
+            None
+        };
+
+        let cert_keys = if options.cert.enabled && !options.cert.cert_path.is_empty() {
+            Some(signer::parse_pkcs12(
+                &options.cert.cert_path,
+                &options.cert.password,
+            )?)
+        } else {
+            None
+        };
+
+        Ok(PreparedAssets {
+            seal_img,
+            watermark_rendered,
+            cert_keys,
+        })
+    }
+}
+
+/// Process a single PDF file with pre-computed assets.
+/// Merges stamp + watermark into a single PDF load/save cycle.
+pub fn process_task_with_assets(
+    input_path: &str,
+    options: &SealOptions,
+    assets: &PreparedAssets,
+) -> Result<String> {
     if signer::has_existing_signature(input_path)? {
         return Err(AppError::Signature(
             "input PDF already contains a signature; rewriting it would invalidate the existing signature".into(),
@@ -22,11 +87,10 @@ pub fn process_task(input_path: &str, options: &SealOptions) -> Result<String> {
         &options.output_name,
         &options.output_structure,
     );
-    let needs_stamp = !options.seal_image_path.is_empty()
-        && options.seal_width > 0.0
-        && options.seal_height > 0.0;
-    let needs_watermark = options.watermark.enabled && !options.watermark.text.is_empty();
-    let needs_sign = options.cert.enabled && !options.cert.cert_path.is_empty();
+
+    let needs_stamp = assets.seal_img.is_some();
+    let needs_watermark = assets.watermark_rendered.is_some();
+    let needs_sign = assets.cert_keys.is_some();
 
     if !needs_stamp && !needs_watermark && !needs_sign {
         return Err(AppError::Config(
@@ -34,13 +98,12 @@ pub fn process_task(input_path: &str, options: &SealOptions) -> Result<String> {
         ));
     }
 
-    let mut temp_files = Vec::new();
-    let mut current_path = input_path.to_string();
+    // Load PDF once, apply stamp + watermark in-memory, then save once
+    let mut doc = lopdf::Document::load(input_path)
+        .map_err(|e| crate::error::AppError::Pdf(e.to_string()))?;
 
     if needs_stamp {
-        let seal_img = stamper::load_seal_image(&options.seal_image_path, options.seal_opacity)?;
-        let doc = lopdf::Document::load(&current_path)
-            .map_err(|e| crate::error::AppError::Pdf(e.to_string()))?;
+        let seal_img = assets.seal_img.as_ref().unwrap();
         let page_dims = document::document_page_dimensions(&doc)?;
         let placements = locator::compute_placements(
             &page_dims,
@@ -49,34 +112,27 @@ pub fn process_task(input_path: &str, options: &SealOptions) -> Result<String> {
             options.seal_height,
             Some(&doc),
         );
-
-        let next_path = if needs_watermark || needs_sign {
-            let tmp = NamedTempFile::new().map_err(crate::error::AppError::Io)?;
-            let path = tmp.path().to_string_lossy().to_string();
-            temp_files.push(tmp);
-            path
-        } else {
-            output_path.clone()
-        };
-        stamper::stamp_pdf(&current_path, &next_path, &seal_img, &placements)?;
-        current_path = next_path;
+        stamper::stamp_document(&mut doc, seal_img, &placements)?;
     }
 
     if needs_watermark {
-        let next_path = if needs_sign {
-            let tmp = NamedTempFile::new().map_err(crate::error::AppError::Io)?;
-            let path = tmp.path().to_string_lossy().to_string();
-            temp_files.push(tmp);
-            path
-        } else {
-            output_path.clone()
-        };
-        watermarker::apply_watermark(&current_path, &next_path, &options.watermark)?;
-        current_path = next_path;
+        let rendered = assets.watermark_rendered.as_ref().unwrap();
+        watermarker::apply_watermark_to_document(&mut doc, &options.watermark, rendered)?;
     }
 
     if needs_sign {
-        signer::sign_pdf(&current_path, &output_path, &options.cert)?;
+        // Sign requires a file path, so save to temp first
+        let tmp = tempfile::NamedTempFile::new().map_err(crate::error::AppError::Io)?;
+        let tmp_path = tmp.path().to_string_lossy().to_string();
+        doc.save(&tmp_path)
+            .map_err(|e| crate::error::AppError::Pdf(e.to_string()))?;
+
+        let (pkey, cert, chain) = assets.cert_keys.as_ref().unwrap();
+        signer::sign_pdf_with_keys(&tmp_path, &output_path, pkey, cert, chain, &options.cert)?;
+        // tmp is cleaned up automatically
+    } else {
+        doc.save(&output_path)
+            .map_err(|e| crate::error::AppError::Pdf(e.to_string()))?;
     }
 
     Ok(output_path)

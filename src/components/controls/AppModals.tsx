@@ -228,7 +228,7 @@ function BatchSummaryModal({
               </div>
             </ModalHeader>
 
-            <ModalBody>
+            <ModalBody className="flex flex-col">
               <div className="text-xs text-foreground-500">
                 共 {summary.total} 个文件 · 用时 {formatElapsed(summary.elapsed_ms)}
                 {summary.started_at && (
@@ -258,7 +258,7 @@ function BatchSummaryModal({
                 ))}
               </Tabs>
 
-              <div className="min-h-[120px]">
+              <div className="min-h-0 flex-1 overflow-y-auto">
                 {loading ? (
                   <div className="flex items-center justify-center py-8 text-xs text-foreground-500">
                     加载中...
@@ -312,7 +312,7 @@ function BatchSummaryModal({
               </div>
 
               {totalPages > 1 && (
-                <div className="flex justify-center">
+                <div className="flex shrink-0 justify-center pt-1">
                   <Pagination
                     total={totalPages}
                     page={page}

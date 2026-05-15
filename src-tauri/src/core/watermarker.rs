@@ -1,31 +1,17 @@
 use super::locator;
 use super::models::*;
-use crate::error::{AppError, Result};
+use crate::error::Result;
 use crate::pdf::document;
 use crate::pdf::xobject::{self, ImageDraw};
 use crate::text::watermark_image;
 
-/// Apply text watermark to a PDF file.
-pub fn apply_watermark(input_path: &str, output_path: &str, cfg: &WatermarkConfig) -> Result<()> {
-    if !cfg.enabled || cfg.text.is_empty() {
-        std::fs::copy(input_path, output_path).map_err(AppError::Io)?;
-        return Ok(());
-    }
-
-    // Render watermark text to image
-    let rendered = watermark_image::render_watermark(
-        &cfg.text,
-        &cfg.font_family,
-        &cfg.font_path,
-        cfg.font_size,
-        cfg.opacity,
-        cfg.rotation,
-        &cfg.color,
-    )
-    .map_err(AppError::Font)?;
-
-    let mut doc = lopdf::Document::load(input_path).map_err(|e| AppError::Pdf(e.to_string()))?;
-    let image_id = xobject::add_png_image(&mut doc, &rendered.png_bytes)?;
+/// Apply watermark to an already-loaded in-memory Document (avoids re-loading).
+pub fn apply_watermark_to_document(
+    doc: &mut lopdf::Document,
+    cfg: &WatermarkConfig,
+    rendered: &watermark_image::WatermarkRenderResult,
+) -> Result<()> {
+    let image_id = xobject::add_png_image(doc, &rendered.png_bytes)?;
 
     let page_ids = doc.get_pages();
     let total_pages = page_ids.len();
@@ -38,15 +24,12 @@ pub fn apply_watermark(input_path: &str, output_path: &str, cfg: &WatermarkConfi
             None => continue,
         };
 
-        // Get page dimensions
-        let (page_w, page_h) = document::page_dimensions(&doc, page_id)?;
+        let (page_w, page_h) = document::page_dimensions(doc, page_id)?;
         let draws = watermark_draws(cfg, rendered.width_pt, rendered.height_pt, page_w, page_h);
         let resource_name = format!("Wm{}_{}", page_idx + 1, image_id.0);
-        xobject::add_image_draws_to_page(&mut doc, page_id, &resource_name, image_id, &draws)?;
+        xobject::add_image_draws_to_page(doc, page_id, &resource_name, image_id, &draws)?;
     }
 
-    doc.save(output_path)
-        .map_err(|e| AppError::Pdf(e.to_string()))?;
     Ok(())
 }
 

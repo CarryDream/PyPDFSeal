@@ -29,17 +29,24 @@ export default function WatermarkOverlay({
 
   const scaleX = canvasWidth / pageWidthPt;
   const scaleY = canvasHeight / pageHeightPt;
-  const fontSizePx = watermark.font_size * Math.min(scaleX, scaleY);
+  // Backend renders at 4x then downscales — use uniform scale to match
+  const scale = Math.min(scaleX, scaleY);
+  const fontSizePx = watermark.font_size * scale;
   const gapXPx = watermark.gap_x * scaleX;
   const gapYPx = watermark.gap_y * scaleY;
   const fontFamily = watermark.font_family || "sans-serif";
+  const rotation = watermark.rotation;
 
-  // Measure actual text dimensions using canvas API for accuracy
-  const { textW, textH } = useMemo(() => {
+  // Measure text dimensions (approximation of backend's ab_glyph metrics)
+  const { boxW, boxH } = useMemo(() => {
     const w = measureTextWidth(watermark.text, fontSizePx, fontFamily);
     const h = fontSizePx * 1.2;
-    return { textW: w, textH: h };
-  }, [watermark.text, fontSizePx, fontFamily]);
+    // Bounding box of rotated text — matches backend's rotate_image() new dimensions
+    const rad = Math.abs(rotation * Math.PI / 180);
+    const cos = Math.cos(rad);
+    const sin = Math.sin(rad);
+    return { boxW: w * cos + h * sin, boxH: w * sin + h * cos };
+  }, [watermark.text, fontSizePx, fontFamily, rotation]);
 
   const baseStyle: React.CSSProperties = {
     fontSize: fontSizePx,
@@ -50,7 +57,7 @@ export default function WatermarkOverlay({
     color: watermark.color,
     opacity: watermark.opacity,
     whiteSpace: "nowrap",
-    transform: `rotate(${watermark.rotation}deg)`,
+    transform: `rotate(${rotation}deg)`,
     pointerEvents: "none",
     userSelect: "none",
     lineHeight: 1,
@@ -83,18 +90,20 @@ export default function WatermarkOverlay({
     );
   }
 
-  // Tile mode: staggered grid matching backend watermarker.rs logic
-  const tileW = Math.max(textW + gapXPx, 1);
-  const tileH = Math.max(textH + gapYPx, 1);
+  // Tile mode: staggered grid matching backend watermarker.rs logic.
+  // Backend rotates the watermark image first, then tiles the rotated image.
+  // Use the rotated bounding box (boxW × boxH) for tile spacing to match.
+  const tileW = Math.max(boxW + gapXPx, 1);
+  const tileH = Math.max(boxH + gapYPx, 1);
   const items: React.ReactNode[] = [];
   let row = 0;
-  let y = -textH;
+  let y = -boxH;
 
-  while (y <= canvasHeight + textH) {
+  while (y <= canvasHeight + boxH) {
     const stagger = row % 2 === 1 ? tileW / 2 : 0;
-    let x = stagger - textW;
+    let x = stagger - boxW;
 
-    while (x <= canvasWidth + textW) {
+    while (x <= canvasWidth + boxW) {
       items.push(
         <span
           key={`${row}-${items.length}`}
