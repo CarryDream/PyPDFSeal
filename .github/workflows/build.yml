@@ -1,4 +1,4 @@
-name: Build & Release
+name: Build Executables
 
 on:
   push:
@@ -17,21 +17,45 @@ jobs:
         include:
           - platform: windows-latest
             target: x86_64-pc-windows-msvc
-            label: windows
-          - platform: macos-latest
-            target: aarch64-apple-darwin
-            label: macos-arm64
-          - platform: macos-13
-            target: x86_64-apple-darwin
-            label: macos-x64
+            label: windows-x64
+            executable: src-tauri/target/x86_64-pc-windows-msvc/release/pydfseal.exe
+            artifact: PyPDFSeal-windows-x64.exe
           - platform: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
-            label: linux
+            label: linux-x64
+            executable: src-tauri/target/x86_64-unknown-linux-gnu/release/pydfseal
+            artifact: PyPDFSeal-linux-x64
+          - platform: macos-15
+            target: aarch64-apple-darwin
+            label: macos-arm64
+            executable: src-tauri/target/aarch64-apple-darwin/release/pydfseal
+            artifact: PyPDFSeal-macos-arm64
+          - platform: macos-15-intel
+            target: x86_64-apple-darwin
+            label: macos-x64
+            executable: src-tauri/target/x86_64-apple-darwin/release/pydfseal
+            artifact: PyPDFSeal-macos-x64
 
     runs-on: ${{ matrix.platform }}
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install Linux dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            curl \
+            file \
+            libayatana-appindicator3-dev \
+            libssl-dev \
+            libwebkit2gtk-4.1-dev \
+            libxdo-dev \
+            librsvg2-dev \
+            patchelf \
+            wget
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
@@ -47,49 +71,35 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "lts/*"
+          cache: npm
 
-      - name: Install dependencies
+      - name: Install Node dependencies
         run: npm ci
 
-      - name: Install Linux dependencies
-        if: matrix.platform == 'ubuntu-22.04'
+      - name: Build executable
+        run: npm run tauri:build:exe -- --target ${{ matrix.target }} --ci
+
+      - name: Stage executable
+        shell: pwsh
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+          New-Item -ItemType Directory -Force artifacts | Out-Null
+          $source = "${{ matrix.executable }}"
+          if (!(Test-Path $source)) {
+            throw "Executable not found: $source"
+          }
+          Copy-Item $source "artifacts/${{ matrix.artifact }}"
 
-      - name: Build frontend
-        run: npm run build
-
-      - name: Build Tauri app
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+      - name: Upload executable artifact
+        uses: actions/upload-artifact@v4
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: "PyPDFSeal ${{ github.ref_name }}"
-          releaseBody: "See the assets below to download and install."
-          releaseDraft: true
-          prerelease: false
-          args: "--target ${{ matrix.target }}"
+          name: ${{ matrix.label }}
+          path: artifacts/${{ matrix.artifact }}
+          if-no-files-found: error
 
-  create-icon:
-    if: false  # Disabled — run manually to generate icon.icns on macOS
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Generate icon.icns
-        run: |
-          mkdir -p icon.iconset
-          sips -z 16 16 src-tauri/icons/icon.png --out icon.iconset/icon_16x16.png
-          sips -z 32 32 src-tauri/icons/icon.png --out icon.iconset/icon_16x16@2x.png
-          sips -z 32 32 src-tauri/icons/icon.png --out icon.iconset/icon_32x32.png
-          sips -z 64 64 src-tauri/icons/icon.png --out icon.iconset/icon_32x32@2x.png
-          sips -z 128 128 src-tauri/icons/icon.png --out icon.iconset/icon_128x128.png
-          sips -z 256 256 src-tauri/icons/icon.png --out icon.iconset/icon_128x128@2x.png
-          sips -z 256 256 src-tauri/icons/icon.png --out icon.iconset/icon_256x256.png
-          sips -z 512 512 src-tauri/icons/icon.png --out icon.iconset/icon_256x256@2x.png
-          sips -z 512 512 src-tauri/icons/icon.png --out icon.iconset/icon_512x512.png
-          sips -z 1024 1024 src-tauri/icons/icon.png --out icon.iconset/icon_512x512@2x.png
-          iconutil -c icns icon.iconset -o src-tauri/icons/icon.icns
+      - name: Upload tagged release asset
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          prerelease: false
+          files: artifacts/${{ matrix.artifact }}

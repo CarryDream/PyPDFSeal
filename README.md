@@ -31,7 +31,7 @@ PyPDFSeal 是一个基于 **Rust + Tauri + React** 的本地 PDF 批量盖章工
 
 - Node.js 和 npm
 - Rust 工具链
-- Tauri CLI
+- 项目内已安装 Tauri CLI（`@tauri-apps/cli`）
 - Windows 环境需要 WebView2 Runtime
 
 安装依赖：
@@ -40,18 +40,16 @@ PyPDFSeal 是一个基于 **Rust + Tauri + React** 的本地 PDF 批量盖章工
 npm install
 ```
 
-如果没有安装 Tauri CLI，可以使用：
+通常不需要全局安装 Tauri CLI。项目命令会使用 `node_modules` 中的 CLI。
 
-```bash
-cargo install tauri-cli
-```
+如果要直接执行 `cargo tauri ...`，才需要额外安装 `tauri-cli`。
 
 ## 开发启动
 
 推荐在项目根目录执行：
 
 ```bash
-npm run tauri -- dev
+npm run tauri:dev
 ```
 
 也可以在 `src-tauri` 目录执行：
@@ -105,30 +103,77 @@ cargo fmt
 
 ## 打包
 
+当前项目配置为 **只生成可执行文件**，不生成 NSIS/MSI、dmg、deb、AppImage 等安装包。
+
 在项目根目录执行：
 
 ```bash
-npm run tauri -- build
+npm run tauri:build:exe
 ```
 
 或在 `src-tauri` 目录执行：
 
 ```bash
-cargo tauri build
+cargo tauri build --no-bundle --ci
 ```
 
-生成的安装包/可执行文件位于：
+本机命令只会生成当前平台的可执行文件：
 
 ```text
-src-tauri/target/release/bundle/
+src-tauri/target/release/pydfseal.exe   # Windows
+src-tauri/target/release/pydfseal       # Linux/macOS
 ```
 
-只做调试构建、不生成安装包：
+如果你是在 Windows 上执行构建，只会看到 `pydfseal.exe` 和 `pydfseal.pdb`，不会生成 Linux/macOS 的可执行文件。
+
+调试构建：
 
 ```bash
-cd src-tauri
-cargo tauri build --debug --no-bundle --ci
+npm run tauri:build:exe -- --debug --ci
 ```
+
+如果指定 Rust target，产物在对应 target 目录下：
+
+```text
+src-tauri/target/<target>/release/pydfseal.exe
+src-tauri/target/<target>/release/pydfseal
+```
+
+### 生成多平台可执行文件
+
+不要指望在 Windows 本机一条命令直接生成 Windows、Linux、macOS 三个平台的可执行文件。Tauri 桌面应用依赖平台 WebView 和系统 SDK，特别是 macOS 产物必须在 macOS runner 上构建。
+
+推荐使用 GitHub Actions：
+
+1. 在 GitHub 仓库中打开 `Actions`。
+2. 选择 `Build Executables` workflow。
+3. 点击 `Run workflow` 手动构建，或推送 `v*` tag 自动构建。
+
+workflow 会分别在 Windows、Linux、macOS runner 上生成这些 artifact：
+
+```text
+PyPDFSeal-windows-x64.exe
+PyPDFSeal-linux-x64
+PyPDFSeal-macos-arm64
+PyPDFSeal-macos-x64
+```
+
+推送 tag 时，例如：
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+GitHub Actions 会创建 draft release，并把上述可执行文件上传为 release assets。
+
+### 平台运行要求
+
+这些产物是“单可执行文件”，不是完全静态二进制：
+
+- Windows 需要 WebView2 Runtime。
+- Linux 运行环境需要 WebKitGTK 等桌面运行库。
+- macOS 未签名可执行文件可能被 Gatekeeper 拦截，首次运行可能需要用户手动允许。
 
 ## 推荐验证流程
 
@@ -144,7 +189,7 @@ cargo clippy --all-targets -- -D warnings
 如果修改了 UI 或 PDF 预览逻辑，再运行：
 
 ```bash
-npm run tauri -- dev
+npm run tauri:dev
 ```
 
 手动验证以下场景：
@@ -166,9 +211,9 @@ npm run tauri -- dev
 
 这是有意设计。普通盖章/水印会重写 PDF，可能导致原有数字签名失效。当前版本选择跳过已签名 PDF，而不是静默破坏签名。
 
-### 打包时提示 bundle identifier 以 `.app` 结尾
+### 为什么没有安装包
 
-当前配置使用 `com.pydfseal.app`。这在 Windows 下不影响使用，但如果未来要发布 macOS 版本，建议把 identifier 改成不以 `.app` 结尾的值。
+当前 `src-tauri/tauri.conf.json` 中 `bundle.active` 为 `false`，打包命令使用 `--no-bundle`。这是有意设计：只产出可执行文件，不产出安装器或系统安装包。
 
 ### 前端构建提示 chunk 超过 500 KB
 
