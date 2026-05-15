@@ -77,7 +77,7 @@ jobs:
             rust_targets: ""
             label: linux-arm64
 
-          - platform: windows-2022
+          - platform: windows-latest
             args: ""
             rust_targets: ""
             label: windows-x64
@@ -169,8 +169,42 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p release-files
-          # Flatten all artifact files into a single directory
-          find all-artifacts -type f -exec cp -t release-files {} +
+
+          copy_release_file() {
+            local src="$1"
+            local base
+            local dest
+            local suffix
+            base="$(basename "$src")"
+            dest="release-files/$base"
+
+            case "$src" in
+              *aarch64-apple-darwin*) suffix="aarch64" ;;
+              *x86_64-apple-darwin*) suffix="x64" ;;
+              *) suffix="" ;;
+            esac
+
+            if [ -n "$suffix" ]; then
+              case "$base" in
+                *.app.tar.gz.sig)
+                  dest="release-files/${base%.app.tar.gz.sig}_${suffix}.app.tar.gz.sig"
+                  ;;
+                *.app.tar.gz)
+                  dest="release-files/${base%.app.tar.gz}_${suffix}.app.tar.gz"
+                  ;;
+              esac
+            elif [ -e "$dest" ]; then
+              suffix="$(basename "$(dirname "$(dirname "$(dirname "$src")")")")"
+              dest="release-files/${suffix}_${base}"
+            fi
+
+            cp "$src" "$dest"
+          }
+
+          while IFS= read -r -d '' file; do
+            copy_release_file "$file"
+          done < <(find all-artifacts -type f -print0)
+
           # Stage updater manifest
           manifest="$(find release-files -name '*.json' -type f | head -n 1 || true)"
           if [ -n "$manifest" ]; then
