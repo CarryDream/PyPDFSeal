@@ -3,7 +3,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { useConfigStore } from "../../store/configStore";
 import { getAppVersion } from "../../utils/ipc";
 import { openReleasePage } from "../../utils/updates";
-import { checkAppUpdates } from "../../hooks/useAppSettings";
+import { checkAppUpdates, installAppUpdate } from "../../hooks/useAppSettings";
 import type { CloseBehavior, OutputNameMode } from "../../types";
 
 export default function SettingsPanel() {
@@ -117,6 +117,16 @@ export default function SettingsPanel() {
         <button onClick={() => void checkAppUpdates()} disabled={updateStatus.checking}>
           {updateStatus.checking ? "检查中..." : "检查新版"}
         </button>
+        {updateStatus.update_available && updateStatus.installable && (
+          <button
+            onClick={() => void installAppUpdate()}
+            disabled={updateStatus.installing}
+          >
+            {updateStatus.installing
+              ? `更新中 ${updateStatus.download_progress || 0}%`
+              : "下载并安装"}
+          </button>
+        )}
         {updateStatus.update_available && (
           <button onClick={() => void openReleasePage(updateStatus.release_url)}>
             打开下载页

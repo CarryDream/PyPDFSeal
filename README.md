@@ -1,123 +1,146 @@
-# PyPDFSeal
+# PyPDFSeal 🖋️
 
-本地 PDF 批量盖章工具，基于 Rust + Tauri + React。文件在本机处理，不上传服务端。
+> PDF 批量电子盖章工具 - 支持印章、水印、数字签名
 
-## 功能
+<div align="center">
 
-- 批量选择 PDF 文件，或扫描目录中的 PDF。
-- 支持印章图片盖章，图片格式包括 PNG/JPG/JPEG/BMP。
-- 支持固定位置、页面坐标、关键字定位。
-- 支持文本水印，包含字体、字号、颜色、透明度、旋转和布局设置。
-- 支持 `.p12` / `.pfx` 证书进行 PDF 数字签名。
-- 支持批处理开始、暂停、恢复、取消。
-- 默认输出到原 PDF 所在目录的 `sealed` 子目录，也可在设置中选择默认输出目录。
-- 支持配置输出文件名前缀、后缀或不添加额外标记，默认后缀为 `_sealed`。
-- 支持托盘菜单打开设置、检查更新、查看关于信息。
+  <p>
+    <a href="https://github.com/CarryDream/PyPDFSeal">
+      <img src="https://img.shields.io/badge/Version-0.1.3-blue?style=flat-square" alt="Version">
+    </a>
+    <img src="https://img.shields.io/badge/Tauri-v2-orange?style=flat-square" alt="Tauri">
+    <img src="https://img.shields.io/badge/Backend-Rust-red?style=flat-square" alt="Rust">
+    <img src="https://img.shields.io/badge/Frontend-React-61DAFB?style=flat-square" alt="React">
+    <img src="https://img.shields.io/badge/License-CC--BY--NC--SA--4.0-lightgrey?style=flat-square" alt="License">
+  </p>
 
-## 技术栈
+  <p>
+    <a href="#核心功能">核心功能</a> • 
+    <a href="#安装指南">安装指南</a> • 
+    <a href="#使用说明">使用说明</a> • 
+    <a href="#构建指南">构建指南</a>
+  </p>
 
-- 前端：React 19、TypeScript、Vite、Zustand、pdf.js
-- 桌面：Tauri 2
-- 后端：Rust 2024
-- PDF：lopdf、image、OpenSSL
+</div>
 
-## 环境
+---
 
-- Node.js + npm
-- Rust 工具链
-- Windows 运行需要 WebView2 Runtime
-- Linux 构建/运行需要 WebKitGTK 相关依赖
+**PyPDFSeal** 是一款专业的 PDF 批量处理工具，专注于电子盖章、数字水印和 PDF 数字签名。支持批量处理、多种定位方式、证书签名、自动更新等功能，适合企业和个人用户日常 PDF 文件的标准化处理需求。
 
-安装依赖：
+## ✨ 核心功能
+
+### 🖼️ 印章管理与批量盖章
+- 支持 PNG 透明印章图片
+- 多种定位方式：固定位置、关键字定位、坐标定位
+- 批量处理多个 PDF 文件
+- 支持自定义印章大小、透明度、旋转角度
+
+### 💧 高级水印功能
+- 文本水印与图片水印
+- 支持系统字体加载
+- 多种布局方式（平铺、居中）
+- 可调节水印透明度、旋转角度、颜色、字号
+
+### ✍️ 数字签名
+- 支持 PKCS#12 (.p12 / .pfx) 证书
+- 生成符合标准的 PKCS#7 数字签名
+- 自动在 PDF 中注入签名域（ByteRange）
+- 支持签名原因、位置、联系方式等信息
+
+### ⚙️ 实用功能
+- 实时预览效果
+- 自定义输出文件名规则
+- 自动检查更新
+- 系统托盘支持
+- 跨平台支持（Windows / macOS / Linux）
+
+## 📦 安装指南
+
+### 方式一：一键安装脚本（推荐）
+
+**Linux / macOS**
+```bash
+curl -fsSL https://raw.githubusercontent.com/CarryDream/PyPDFSeal/main/install.sh | bash
+```
+
+**Windows (PowerShell)**
+```powershell
+irm https://raw.githubusercontent.com/CarryDream/PyPDFSeal/main/install.ps1 | iex
+```
+
+支持指定版本：
+```bash
+curl -fsSL https://raw.githubusercontent.com/CarryDream/PyPDFSeal/main/install.sh | VERSION=0.1.3 bash
+```
+
+### 方式二：手动下载
+
+前往 [GitHub Releases](https://github.com/CarryDream/PyPDFSeal/releases) 下载对应平台的安装包：
+
+- **Windows**: `PyPDFSeal_版本号_x64-setup.exe`
+- **macOS**: `.dmg` 文件
+- **Linux**: `.deb` 或 `.AppImage`
+
+### 方式三：从源码构建
+
+请参考下方「构建指南」。
+
+## 🚀 使用说明
+
+1. 启动应用后，添加需要处理的 PDF 文件
+2. 在「印章」面板选择印章图片并设置位置参数
+3. 在「水印」面板配置水印内容（可选）
+4. 在「证书」面板导入数字证书并配置签名信息（可选）
+5. 点击「开始处理」即可批量生成已盖章/签名的 PDF
+
+详细操作可参考应用内界面提示。
+
+## 🛠️ 构建指南
+
+### 环境要求
+
+- Node.js >= 20
+- Rust (最新稳定版)
+- pnpm / npm / yarn
+
+### 开发
 
 ```bash
+# 安装依赖
 npm install
+
+# 启动开发环境
+npm run tauri dev
 ```
 
-项目已使用 `@tauri-apps/cli`，通常不需要全局安装 Tauri CLI。
-
-## 开发
-
-启动桌面应用：
+### 生产构建
 
 ```bash
-npm run tauri:dev
+# 构建安装包
+npm run tauri build
 ```
 
-仅启动前端：
+构建产物位于 `src-tauri/target/release/bundle/` 目录下。
 
-```bash
-npm run dev
-```
+---
 
-前端构建：
+## 📄 许可证
 
-```bash
-npm run build
-```
+本项目采用 **CC-BY-NC-SA-4.0** 许可证。
 
-Rust 检查：
+- 允许：分享、修改
+- 限制：**仅限非商业用途**、需署名、衍生作品必须采用相同许可证
 
-```bash
-cd src-tauri
-cargo test
-cargo clippy --all-targets -- -D warnings
-```
+完整许可证请查看 [LICENSE](./LICENSE) 文件。
 
-## 打包
+---
 
-项目只生成可执行文件，不生成安装包。
+## 🤝 贡献
 
-本机生成当前平台可执行文件：
+欢迎提交 Issue 和 Pull Request！
 
-```bash
-npm run tauri:build:exe
-```
+---
 
-产物路径：
+**Copyright © 2026 CarryDream**
 
-```text
-src-tauri/target/release/pydfseal.exe   # Windows
-src-tauri/target/release/pydfseal       # Linux/macOS
-```
-
-Windows 本机构建只会生成 `pydfseal.exe` 和 `pydfseal.pdb`。Linux/macOS 产物需要在对应系统上构建。
-
-调试构建：
-
-```bash
-npm run tauri:build:exe -- --debug --ci
-```
-
-## 多平台构建
-
-GitHub Actions 已拆分为两个 workflow：
-
-- `CI`：普通 push / pull request 触发，执行前端构建、Rust fmt/clippy/check 和 Tauri debug 构建测试。
-- `Release`：推送 `v*` tag 或手动触发，生成多平台 release 产物并统一发布到 GitHub Release。
-
-`Release` workflow 当前发布裸可执行文件，不生成安装包。产物包括：
-
-```text
-PyPDFSeal-windows-x64.exe
-PyPDFSeal-linux-x64
-PyPDFSeal-linux-arm64
-PyPDFSeal-macos-arm64
-PyPDFSeal-macos-x64
-```
-
-手动执行：GitHub 仓库 -> Actions -> Release -> Run workflow。手动触发会生成 prerelease 名称，不会反向 push tag。
-
-正式发布时推送 tag：
-
-```bash
-git tag v0.1.2
-git push origin v0.1.2
-```
-
-## 注意事项
-
-- 已签名 PDF 会跳过处理，避免重写后破坏原签名。
-- 盖章和水印会生成新 PDF，不覆盖原文件。
-- `.pdb` 是 Windows 调试符号文件，不是 Linux/macOS 可执行文件。
-- Vite 可能提示 pdf.js chunk 超过 500 KB，这是构建警告，不影响运行。
+> PyPDFSeal - 让 PDF 处理更简单、更专业。

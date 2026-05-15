@@ -17,6 +17,7 @@
     "shell:default",
     "shell:allow-open",
     "shell:allow-execute",
+    "process:default",
     "store:default",
     "store:allow-get",
     "store:allow-set",
@@ -29,6 +30,7 @@
     "store:allow-length",
     "store:allow-clear",
     "store:allow-reset",
-    "store:allow-load"
+    "store:allow-load",
+    "updater:default"
   ]
 }

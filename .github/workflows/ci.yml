@@ -85,7 +85,7 @@ jobs:
         run: cargo check
         working-directory: src-tauri
 
-  # Tauri 构建测试：debug 构建比 release 快，用来验证应用能在各平台完成 Tauri 构建。
+  # Tauri 构建测试：只验证应用能在各平台编译，不生成安装包，避免 CI 依赖发布签名密钥。
   build-tauri:
     name: Build Tauri App
     runs-on: ${{ matrix.platform }}
@@ -125,9 +125,9 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
-      - name: Build Tauri app (debug)
-        run: npm run tauri -- build --debug
+      - name: Build Tauri app (debug, no bundle)
+        run: npm run tauri -- build --debug --no-bundle
         env:
-          # CI 环境不做应用签名。
+          # CI 环境不做应用签名；安装包和 updater artifacts 只在 Release workflow 生成。
           TAURI_SIGNING_PRIVATE_KEY: ""
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""

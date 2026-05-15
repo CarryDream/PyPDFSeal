@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { listen } from "@tauri-apps/api/event";
 import SettingsPanel from "../panels/SettingsPanel";
-import { checkAppUpdates } from "../../hooks/useAppSettings";
+import { checkAppUpdates, installAppUpdate } from "../../hooks/useAppSettings";
 import { useConfigStore } from "../../store/configStore";
 import { getAppVersion } from "../../utils/ipc";
 import { openReleasePage } from "../../utils/updates";
@@ -119,6 +119,16 @@ function UpdatePanel() {
         <button onClick={() => void checkAppUpdates()} disabled={updateStatus.checking}>
           {updateStatus.checking ? "检查中..." : "重新检查"}
         </button>
+        {updateStatus.update_available && updateStatus.installable && (
+          <button
+            onClick={() => void installAppUpdate()}
+            disabled={updateStatus.installing}
+          >
+            {updateStatus.installing
+              ? `更新中 ${updateStatus.download_progress || 0}%`
+              : "下载并安装"}
+          </button>
+        )}
         {updateStatus.update_available && (
           <button onClick={() => void openReleasePage(updateStatus.release_url)}>
             打开下载页

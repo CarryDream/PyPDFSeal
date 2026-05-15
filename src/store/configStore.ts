@@ -126,10 +126,13 @@ const defaultAppSettings: AppSettings = {
 
 const defaultUpdateStatus: UpdateStatus = {
   checking: false,
+  installing: false,
+  download_progress: 0,
   current_version: "",
   latest_version: "",
   update_available: false,
   release_url: "",
+  installable: false,
   error: "",
   last_checked: "",
 };

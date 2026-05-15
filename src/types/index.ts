@@ -67,10 +67,13 @@ export interface OutputNameConfig {
 
 export interface UpdateStatus {
   checking: boolean;
+  installing: boolean;
+  download_progress: number;
   current_version: string;
   latest_version: string;
   update_available: boolean;
   release_url: string;
+  installable?: boolean;
   error: string;
   last_checked: string;
 }

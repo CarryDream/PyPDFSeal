@@ -1,64 +1,67 @@
 [package]
 name = "pydfseal"
-version = "0.1.2"
-description = "PDF batch electronic seal stamping tool"
+version = "0.1.3"
+description = "PDF 批量电子盖章工具 - 支持印章、水印、数字签名"
 authors = ["jinht"]
+license = "MIT OR Apache-2.0"
 edition = "2024"
 
 [lib]
+# The `_lib` suffix may seem redundant but it is necessary
+# to make the lib name unique and wouldn't conflict with the bin name.
+# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
 name = "pydfseal_lib"
-crate-type = ["lib", "cdylib", "staticlib"]
+crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-# Tauri
+# ============================ Tauri 核心 + 插件 ============================
 tauri = { version = "2", features = ["protocol-asset", "devtools", "tray-icon"] }
-tauri-plugin-dialog = "2"
-tauri-plugin-fs = "2"
-tauri-plugin-shell = "2"
-tauri-plugin-store = "2"
+tauri-plugin-dialog = "2"      # 文件/文件夹选择对话框
+tauri-plugin-fs = "2"          # 文件系统访问权限（读写 PDF、印章图片等）
+tauri-plugin-process = "2"     # 进程控制（更新后重启应用）
+tauri-plugin-shell = "2"       # 打开外部链接（GitHub Releases）
+tauri-plugin-store = "2"       # 轻量持久化存储（保存用户设置）
+tauri-plugin-updater = "2"     # 应用内自动更新功能
 
-# PDF Processing
-lopdf = "0.34"
-image = { version = "0.25", features = ["png", "jpeg"] }
+# ============================ PDF 处理核心 ============================
+lopdf = "0.35"                 # PDF 解析与修改（注入签名域、内容流处理）
 
-# Text Rendering (watermarks)
-cosmic-text = "0.12"
-font-kit = "0.14"
-imageproc = "0.25"
-ab_glyph = "0.2"
+# ============================ 图片处理 ============================
+image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
 
-# Digital Signatures
-cms = { version = "0.2", features = ["builder"] }
-x509-cert = "0.2"
-der = "0.7"
-sha2 = "0.10"
-rsa = "0.9"
-spki = "0.7"
-pkcs8 = "0.10"
-const-oid = "0.9"
+# ============================ 文字渲染（水印） ============================
+font-kit = "0.14"              # 系统字体加载与匹配
+imageproc = "0.25"             # 图片绘制（文字水印渲染）
+ab_glyph = "0.2"               # 高性能字体光栅化
+
+# ============================ 数字签名（PKCS#7） ============================
+# 使用 OpenSSL 实现 PDF 数字签名（兼容性最好）
 openssl = { version = "0.10", features = ["vendored"] }
-signature = "2"
 
-# Serialization
+# ============================ 序列化 ============================
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
-# Async / Concurrency
+# ============================ 异步运行时 ============================
 tokio = { version = "1", features = ["rt-multi-thread", "sync"] }
 
-# Error Handling
-thiserror = "2"
-anyhow = "1"
+# ============================ 错误处理 ============================
+thiserror = "2"                # 自定义错误类型（AppError）
 
-# Utilities
-tempfile = "3"
-base16ct = "0.2"
+# ============================ 工具库 ============================
+tempfile = "3"                 # 创建临时文件（处理印章/水印时使用）
 
+# ============================ Release 优化配置 ============================
 [profile.release]
-strip = true
-lto = "thin"
+strip = true                   # 去除调试符号，减小体积
+lto = "thin"                   # 链接时优化
 codegen-units = 16
-panic = "abort"
+panic = "abort"                # 减小 panic 带来的体积
+
+# ============================ 功能开关 ============================
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]

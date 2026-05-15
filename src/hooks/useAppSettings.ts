@@ -1,19 +1,21 @@
 import { useEffect, useRef } from "react";
 import { useConfigStore } from "../store/configStore";
 import { setCloseBehavior, showMainWindow } from "../utils/ipc";
-import { checkForUpdates } from "../utils/updates";
+import { checkForUpdates, installPendingUpdate } from "../utils/updates";
 
 export async function checkAppUpdates() {
   const state = useConfigStore.getState();
   if (state.updateStatus.checking) return;
 
-  state.setUpdateStatus({ checking: true, error: "" });
+  state.setUpdateStatus({ checking: true, error: "", download_progress: 0 });
 
   try {
     const result = await checkForUpdates();
     useConfigStore.getState().setUpdateStatus({
       ...result,
       checking: false,
+      installing: false,
+      download_progress: 0,
       error: "",
       last_checked: new Date().toLocaleString(),
     });
@@ -28,8 +30,29 @@ export async function checkAppUpdates() {
   } catch (e) {
     useConfigStore.getState().setUpdateStatus({
       checking: false,
+      installing: false,
       error: String(e),
       last_checked: new Date().toLocaleString(),
+    });
+  }
+}
+
+export async function installAppUpdate() {
+  const state = useConfigStore.getState();
+  if (state.updateStatus.installing) return;
+
+  state.setUpdateStatus({ installing: true, error: "", download_progress: 0 });
+
+  try {
+    await installPendingUpdate((progress) => {
+      useConfigStore.getState().setUpdateStatus({
+        download_progress: progress.percent,
+      });
+    });
+  } catch (e) {
+    useConfigStore.getState().setUpdateStatus({
+      installing: false,
+      error: String(e),
     });
   }
 }
