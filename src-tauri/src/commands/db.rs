@@ -8,10 +8,10 @@ pub fn db_get_config(app: tauri::AppHandle) -> Result<serde_json::Value, String>
     let map = db.get_config().map_err(|e| e.to_string())?;
     let json_map: serde_json::Map<String, serde_json::Value> = map
         .into_iter()
-        .filter_map(|(k, v)| {
+        .map(|(k, v)| {
             let val: serde_json::Value =
                 serde_json::from_str(&v).unwrap_or(serde_json::Value::String(v));
-            Some((k, val))
+            (k, val)
         })
         .collect();
     Ok(serde_json::Value::Object(json_map))

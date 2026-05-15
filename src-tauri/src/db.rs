@@ -4,6 +4,8 @@ use std::sync::Mutex;
 
 use crate::error::Result;
 
+type FileStatusEntry<'a> = (i64, &'a str, Option<&'a str>, Option<&'a str>, Option<i64>);
+
 pub struct Database {
     conn: Mutex<Connection>,
 }
@@ -190,10 +192,7 @@ impl Database {
         Ok(())
     }
 
-    pub fn update_files_status_batch(
-        &self,
-        entries: &[(i64, &str, Option<&str>, Option<&str>, Option<i64>)],
-    ) -> Result<()> {
+    pub fn update_files_status_batch(&self, entries: &[FileStatusEntry<'_>]) -> Result<()> {
         let mut conn = self.conn.lock().unwrap();
         let tx = conn.transaction()?;
         for &(id, status, output_path, error_message, processing_time_ms) in entries {
@@ -410,5 +409,5 @@ fn chrono_now() -> String {
 }
 
 fn is_leap(y: u64) -> bool {
-    (y % 4 == 0 && y % 100 != 0) || y % 400 == 0
+    (y.is_multiple_of(4) && !y.is_multiple_of(100)) || y.is_multiple_of(400)
 }

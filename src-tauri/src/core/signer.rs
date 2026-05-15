@@ -79,7 +79,7 @@ pub fn sign_pdf_with_keys(
     signed_bytes.extend_from_slice(&pdf_bytes[..contents_start]);
     signed_bytes.extend_from_slice(&pdf_bytes[contents_end..]);
 
-    let cms_der = build_pkcs7_signature(&pkey, &cert, &chain, &signed_bytes)?;
+    let cms_der = build_pkcs7_signature(pkey, cert, chain, &signed_bytes)?;
     let cms_hex = hex_encode(&cms_der);
     let placeholder_len = positions.contents_hex_end - positions.contents_hex_start;
     if cms_hex.len() > placeholder_len {

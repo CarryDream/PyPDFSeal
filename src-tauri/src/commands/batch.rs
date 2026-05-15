@@ -13,6 +13,16 @@ struct BatchState {
     cancelled: AtomicBool,
 }
 
+type FileStatusEntry<'a> = (i64, &'a str, Option<&'a str>, Option<&'a str>, Option<i64>);
+
+struct BatchCounters {
+    succeeded: u32,
+    failed: u32,
+    skipped: u32,
+    cancelled: u32,
+    done_count: u32,
+}
+
 /// Managed wrapper — registered once at app setup.
 pub struct BatchHandle(Mutex<Option<Arc<BatchState>>>);
 
@@ -93,8 +103,6 @@ pub async fn batch_process(
         };
         let _ = db.set_batch_run_total(run_id, total as u32);
         let _ = db.assign_files_to_run(run_id);
-        drop(db);
-
         // Pre-compute assets once (seal image, watermark, cert)
         let assets = match pipeline::PreparedAssets::prepare(&options) {
             Ok(a) => a,
@@ -176,11 +184,13 @@ pub async fn batch_process(
         });
 
         // Collect results on main thread: update DB + emit progress
-        let mut succeeded: u32 = 0;
-        let mut failed: u32 = 0;
-        let mut skipped: u32 = 0;
-        let mut cancelled: u32 = 0;
-        let mut done_count: u32 = 0;
+        let mut counters = BatchCounters {
+            succeeded: 0,
+            failed: 0,
+            skipped: 0,
+            cancelled: 0,
+            done_count: 0,
+        };
 
         // Collect all results, batch write to DB
         let mut pending_results: Vec<FileResult> = Vec::new();
@@ -194,11 +204,7 @@ pub async fn batch_process(
                     &pending_results,
                     &file_ids,
                     &app_for_task,
-                    &mut succeeded,
-                    &mut failed,
-                    &mut skipped,
-                    &mut cancelled,
-                    &mut done_count,
+                    &mut counters,
                     total,
                 );
                 pending_results.clear();
@@ -211,11 +217,7 @@ pub async fn batch_process(
                 &pending_results,
                 &file_ids,
                 &app_for_task,
-                &mut succeeded,
-                &mut failed,
-                &mut skipped,
-                &mut cancelled,
-                &mut done_count,
+                &mut counters,
                 total,
             );
         }
@@ -228,10 +230,10 @@ pub async fn batch_process(
                 run_id,
                 &BatchRunSummary {
                     total: total as u32,
-                    succeeded,
-                    failed,
-                    skipped,
-                    cancelled,
+                    succeeded: counters.succeeded,
+                    failed: counters.failed,
+                    skipped: counters.skipped,
+                    cancelled: counters.cancelled,
                     elapsed_ms: elapsed,
                 },
             );
@@ -247,15 +249,11 @@ fn flush_results(
     results: &[FileResult],
     file_ids: &[i64],
     app: &tauri::AppHandle,
-    succeeded: &mut u32,
-    failed: &mut u32,
-    skipped: &mut u32,
-    cancelled: &mut u32,
-    done_count: &mut u32,
+    counters: &mut BatchCounters,
     total: usize,
 ) {
     let db = app.state::<Database>();
-    let mut entries: Vec<(i64, &str, Option<&str>, Option<&str>, Option<i64>)> = Vec::new();
+    let mut entries: Vec<FileStatusEntry<'_>> = Vec::new();
 
     for r in results {
         let db_status = match r.status.as_str() {
@@ -275,20 +273,20 @@ fn flush_results(
 
         match r.status.as_str() {
             "ok" => {
-                *succeeded += 1;
-                *done_count += 1;
+                counters.succeeded += 1;
+                counters.done_count += 1;
             }
             "skipped" => {
-                *skipped += 1;
-                *done_count += 1;
+                counters.skipped += 1;
+                counters.done_count += 1;
             }
             "cancelled" => {
-                *cancelled += (total as u32) - *done_count;
-                *done_count = total as u32;
+                counters.cancelled += (total as u32) - counters.done_count;
+                counters.done_count = total as u32;
             }
             _ => {
-                *failed += 1;
-                *done_count += 1;
+                counters.failed += 1;
+                counters.done_count += 1;
             }
         }
     }
@@ -300,7 +298,7 @@ fn flush_results(
         let _ = app.emit(
             "batch-progress",
             serde_json::json!({
-                "done": *done_count,
+                "done": counters.done_count,
                 "total": total,
                 "file": r.file,
                 "status": r.status,

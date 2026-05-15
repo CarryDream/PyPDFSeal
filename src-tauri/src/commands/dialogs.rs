@@ -18,7 +18,7 @@ pub async fn scan_pdf_dir(app: tauri::AppHandle, dir: String) -> Result<Vec<Stri
         scanned_dirs += 1;
 
         // Emit progress every 10 directories
-        if scanned_dirs % 10 == 0 {
+        if scanned_dirs.is_multiple_of(10) {
             let _ = app.emit(
                 "scan-progress",
                 serde_json::json!({

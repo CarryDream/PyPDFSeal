@@ -86,13 +86,9 @@ mod tests {
             h: 40.0,
         }];
 
-        stamp_pdf(
-            input.path().to_str().unwrap(),
-            output.path().to_str().unwrap(),
-            &img,
-            &placements,
-        )
-        .unwrap();
+        let mut doc = Document::load(input.path()).unwrap();
+        stamp_document(&mut doc, &img, &placements).unwrap();
+        doc.save(output.path()).unwrap();
 
         let doc = Document::load(output.path()).unwrap();
         let page_id = *doc.get_pages().get(&1).unwrap();
