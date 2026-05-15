@@ -20,6 +20,12 @@ pub enum AppError {
 
     #[error("Config error: {0}")]
     Config(String),
+
+    #[error("Database error: {0}")]
+    Database(#[from] rusqlite::Error),
+
+    #[error("Export error: {0}")]
+    Export(String),
 }
 
 impl Serialize for AppError {

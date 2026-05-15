@@ -1,4 +1,5 @@
 pub mod batch;
+pub mod db;
 pub mod dialogs;
 pub mod fonts;
 pub mod preview;

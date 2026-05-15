@@ -44,7 +44,7 @@ export function useBatchProcess() {
         if (p.status === "ok") {
           stats.succeeded += 1;
           if (p.output) stats.outputs.push(p.output);
-          s.addLog(`完成: ${p.file} -> ${p.output ?? "(未返回输出路径)"}`, "#4caf50");
+          s.addLog(`完成: ${p.done} / ${p.total}: ${p.file}`, "#4caf50");
         } else if (p.status === "error") {
           stats.failed += 1;
           stats.failures.push({ file: p.file, message: p.error ?? "未知错误" });
@@ -66,6 +66,8 @@ export function useBatchProcess() {
             skipped: stats.skipped,
             cancelled,
             elapsed_ms: Date.now() - stats.started_at,
+            started_at: stats.started_at,
+            finished_at: Date.now(),
             outputs: stats.outputs,
             failures: stats.failures,
             skipped_files: stats.skipped_files,

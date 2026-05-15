@@ -114,6 +114,8 @@ export interface BatchSummary {
   skipped: number;
   cancelled: number;
   elapsed_ms: number;
+  started_at: number;
+  finished_at: number;
   outputs: string[];
   failures: BatchIssue[];
   skipped_files: BatchIssue[];
@@ -122,4 +124,22 @@ export interface BatchSummary {
 export interface FontInfo {
   family: string;
   path: string;
+}
+
+export interface BatchFileRow {
+  id: number;
+  batch_run_id: number | null;
+  file_path: string;
+  status: "pending" | "processing" | "success" | "fail" | "skip";
+  output_path: string | null;
+  error_message: string | null;
+  processing_time_ms: number | null;
+  created_at: string;
+}
+
+export interface BatchFilesPage {
+  items: BatchFileRow[];
+  total: number;
+  page: number;
+  page_size: number;
 }

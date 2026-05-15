@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import type { CloseBehavior } from "../types";
-import type { DocumentInfo, SealOptions, FontInfo } from "../types";
+import type { DocumentInfo, SealOptions, FontInfo, BatchFilesPage } from "../types";
 
 export function ping(): Promise<string> {
   return invoke<string>("ping");
@@ -44,4 +44,38 @@ export function batchCancel(): Promise<void> {
 
 export function scanPdfDir(dir: string): Promise<string[]> {
   return invoke<string[]>("scan_pdf_dir", { dir });
+}
+
+// ======================== Database IPC ========================
+
+export function dbGetConfig(): Promise<Record<string, unknown>> {
+  return invoke("db_get_config");
+}
+
+export function dbSetConfigBatch(entries: Array<[string, unknown]>): Promise<void> {
+  return invoke("db_set_config_batch", { entries });
+}
+
+export function dbImportFiles(files: string[]): Promise<number[]> {
+  return invoke<number[]>("db_import_files", { files });
+}
+
+export function dbRemoveFile(id: number): Promise<void> {
+  return invoke("db_remove_file", { id });
+}
+
+export function dbGetFilesPage(
+  page: number,
+  pageSize: number,
+  statusFilter?: string,
+): Promise<BatchFilesPage> {
+  return invoke("db_get_files_page", { page, pageSize, statusFilter });
+}
+
+export function dbExportXlsx(savePath: string): Promise<void> {
+  return invoke("db_export_xlsx", { savePath });
+}
+
+export function dbClearHistory(): Promise<void> {
+  return invoke("db_clear_history");
 }

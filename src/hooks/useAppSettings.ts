@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { emit } from "@tauri-apps/api/event";
 import { useConfigStore } from "../store/configStore";
 import { setCloseBehavior, showMainWindow } from "../utils/ipc";
 import { checkForUpdates, installPendingUpdate } from "../utils/updates";
@@ -26,6 +27,7 @@ export async function checkAppUpdates() {
         `发现新版 ${result.latest_version}，当前版本 ${result.current_version}`,
         "#1976d2",
       );
+      await emit("show-updates-requested").catch(() => undefined);
     }
   } catch (e) {
     useConfigStore.getState().setUpdateStatus({

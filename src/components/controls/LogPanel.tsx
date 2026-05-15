@@ -1,34 +1,49 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { Button } from "@heroui/react";
 import { useConfigStore } from "../../store/configStore";
 
-type LogPanelMode = "normal" | "minimized" | "maximized";
-
 const DEFAULT_HEIGHT = 180;
 const MIN_HEIGHT = 92;
 const MINIMIZED_HEIGHT = 32;
+const LOG_LIMIT = 100;
+const SCROLL_THRESHOLD = 8;
 
 export default function LogPanel() {
-  const { logs, clearLogs } = useConfigStore();
-  const [height, setHeight] = useState(DEFAULT_HEIGHT);
-  const [mode, setMode] = useState<LogPanelMode>("normal");
+  const { logs, clearLogs, logPanelHeight, logPanelMode, setLogPanelHeight, setLogPanelMode } = useConfigStore();
+  const height = logPanelHeight;
+  const mode = logPanelMode;
   const dragRef = useRef<{ startY: number; startHeight: number } | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const autoScrollRef = useRef(true);
+
+  const checkAutoScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    autoScrollRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < SCROLL_THRESHOLD;
+  }, []);
+
+  // Auto-scroll when logs change
+  useEffect(() => {
+    if (autoScrollRef.current && scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [logs]);
 
   const maxHeight = () => Math.max(DEFAULT_HEIGHT, window.innerHeight - 120);
 
   const restore = () => {
-    setMode("normal");
-    setHeight((value) => Math.min(Math.max(value, DEFAULT_HEIGHT), maxHeight()));
+    setLogPanelMode("normal");
+    setLogPanelHeight(Math.min(Math.max(height, DEFAULT_HEIGHT), maxHeight()));
   };
 
   const minimize = () => {
-    setMode("minimized");
+    setLogPanelMode("minimized");
   };
 
   const maximize = () => {
-    setMode("maximized");
-    setHeight(maxHeight());
+    setLogPanelMode("maximized");
+    setLogPanelHeight(maxHeight());
   };
 
   const toggleByDoubleClick = () => {
@@ -56,8 +71,8 @@ export default function LogPanel() {
       if (!dragRef.current) return;
 
       const nextHeight = dragRef.current.startHeight + dragRef.current.startY - event.clientY;
-      setMode("normal");
-      setHeight(Math.min(Math.max(nextHeight, MIN_HEIGHT), maxHeight()));
+      setLogPanelMode("normal");
+      setLogPanelHeight(Math.min(Math.max(nextHeight, MIN_HEIGHT), maxHeight()));
     };
 
     const onMouseUp = () => {
@@ -73,16 +88,16 @@ export default function LogPanel() {
       window.removeEventListener("mouseup", onMouseUp);
       document.body.classList.remove("resizing-log-panel");
     };
-  }, [height, mode]);
+  }, [height, mode, setLogPanelHeight, setLogPanelMode]);
 
   useEffect(() => {
     const onResize = () => {
-      setHeight((value) => Math.min(value, maxHeight()));
+      setLogPanelHeight(Math.min(height, maxHeight()));
     };
 
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
-  }, []);
+  }, [height, setLogPanelHeight]);
 
   const renderedHeight =
     mode === "minimized" ? MINIMIZED_HEIGHT : mode === "maximized" ? maxHeight() : height;
@@ -116,7 +131,12 @@ export default function LogPanel() {
       </div>
 
       {mode !== "minimized" && (
-        <div className="log-content flex-1 overflow-y-auto p-2 text-xs font-mono space-y-0.5">
+        <div ref={scrollRef} onScroll={checkAutoScroll} className="log-content flex-1 overflow-y-auto p-2 text-xs font-mono space-y-0.5">
+          {logs.length >= LOG_LIMIT && (
+            <div className="px-2 py-1 text-foreground-400">
+              仅保留最近 {LOG_LIMIT} 条日志，早期日志自动覆盖。
+            </div>
+          )}
           {logs.length === 0 ? (
             <div className="text-foreground-400 px-2 py-1">暂无日志</div>
           ) : (

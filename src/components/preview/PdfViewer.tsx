@@ -3,6 +3,7 @@ import { usePdfDocument, type PageViewport } from "../../hooks/usePdfDocument";
 import { useConfigStore } from "../../store/configStore";
 import { getPageInfo } from "../../utils/ipc";
 import SealOverlay from "./SealOverlay";
+import WatermarkOverlay from "./WatermarkOverlay";
 import type { PageInfo } from "../../types";
 
 interface PdfViewerProps {
@@ -139,13 +140,21 @@ export default function PdfViewer({ filePath }: PdfViewerProps) {
             <div className="pdf-canvas-wrapper">
               <canvas ref={canvasRef} />
               {viewport && currentPageDim && canvasRef.current?.width && canvasRef.current?.height && (
-                <SealOverlay
-                  canvasWidth={canvasRef.current.width}
-                  canvasHeight={canvasRef.current.height}
-                  pageWidthPt={currentPageDim.width_pt}
-                  pageHeightPt={currentPageDim.height_pt}
-                  onDrop={handleSealDrop}
-                />
+                <>
+                  <WatermarkOverlay
+                    canvasWidth={canvasRef.current.width}
+                    canvasHeight={canvasRef.current.height}
+                    pageWidthPt={currentPageDim.width_pt}
+                    pageHeightPt={currentPageDim.height_pt}
+                  />
+                  <SealOverlay
+                    canvasWidth={canvasRef.current.width}
+                    canvasHeight={canvasRef.current.height}
+                    pageWidthPt={currentPageDim.width_pt}
+                    pageHeightPt={currentPageDim.height_pt}
+                    onDrop={handleSealDrop}
+                  />
+                </>
               )}
             </div>
           </div>

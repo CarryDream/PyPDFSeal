@@ -1,14 +1,17 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { listen } from "@tauri-apps/api/event";
-import { Button, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from "@heroui/react";
+import { save } from "@tauri-apps/plugin-dialog";
+import { Button, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Tabs, Tab, Pagination, addToast } from "@heroui/react";
 import SettingsPanel from "../panels/SettingsPanel";
 import { checkAppUpdates, installAppUpdate } from "../../hooks/useAppSettings";
+import { useModalDraggable } from "../../hooks/useModalDraggable";
 import { useConfigStore } from "../../store/configStore";
-import { getAppVersion } from "../../utils/ipc";
+import { getAppVersion, dbGetFilesPage, dbExportXlsx } from "../../utils/ipc";
 import { openReleasePage } from "../../utils/updates";
-import type { BatchIssue, BatchSummary } from "../../types";
+import type { BatchFileRow, BatchSummary } from "../../types";
 
 type ActiveModal = "settings" | "updates" | "about" | null;
+const PAGE_SIZE = 10;
 
 export default function AppModals() {
   const [activeModal, setActiveModal] = useState<ActiveModal>(null);
@@ -52,6 +55,7 @@ export default function AppModals() {
       setActiveModal("updates");
       await checkAppUpdates();
     });
+    void addListener("show-updates-requested", () => setActiveModal("updates"));
 
     return () => {
       disposed = true;
@@ -60,6 +64,7 @@ export default function AppModals() {
   }, []);
 
   const isOpen = !!activeModal;
+  const { targetRef, moveProps } = useModalDraggable(isOpen);
 
   const title =
     activeModal === "settings"
@@ -75,6 +80,7 @@ export default function AppModals() {
   return (
     <>
       <Modal
+        ref={targetRef}
         isOpen={isOpen}
         onOpenChange={(open) => {
           if (!open) handleClose();
@@ -90,7 +96,7 @@ export default function AppModals() {
         <ModalContent>
           {() => (
             <>
-              <ModalHeader className="text-base font-semibold pr-10">
+              <ModalHeader {...moveProps} className="text-base font-semibold pr-10 cursor-move select-none">
                 {title}
               </ModalHeader>
               <ModalBody>
@@ -121,20 +127,80 @@ function BatchSummaryModal({
   isOpen: boolean;
   onClose: () => void;
 }) {
-  const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const hasError = !!summary && summary.failed > 0;
   const hasWarning = !!summary && (summary.skipped > 0 || summary.cancelled > 0);
+  const { targetRef: batchTargetRef, moveProps: batchMoveProps } = useModalDraggable(isOpen && !!summary);
 
-  const handleCopy = async (key: string, text: string) => {
-    await copyText(text);
-    setCopiedKey(key);
-    window.setTimeout(() => {
-      setCopiedKey((current) => current === key ? null : current);
-    }, 1500);
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [page, setPage] = useState(1);
+  const [pageData, setPageData] = useState<{ items: BatchFileRow[]; total: number }>({ items: [], total: 0 });
+  const [loading, setLoading] = useState(false);
+
+  const fetchPage = useCallback(async (p: number, filter: string) => {
+    setLoading(true);
+    try {
+      const f = filter === "all" ? undefined : filter;
+      const result = await dbGetFilesPage(p, PAGE_SIZE, f);
+      setPageData({ items: result.items, total: result.total });
+    } catch (e) {
+      console.error("Failed to fetch page:", e);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isOpen && summary) {
+      setPage(1);
+      setStatusFilter("all");
+      fetchPage(1, "all");
+    }
+  }, [isOpen, summary, fetchPage]);
+
+  const handleTabChange = (key: React.Key) => {
+    const filter = key as string;
+    setStatusFilter(filter);
+    setPage(1);
+    fetchPage(1, filter);
   };
+
+  const handlePageChange = (p: number) => {
+    setPage(p);
+    fetchPage(p, statusFilter);
+  };
+
+  const handleExport = async () => {
+    try {
+      const savePath = await save({
+        defaultPath: `batch_result_${Date.now()}.xlsx`,
+        filters: [{ name: "Excel", extensions: ["xlsx"] }],
+      });
+      if (savePath) {
+        await dbExportXlsx(savePath);
+        addToast({
+          title: "导出成功",
+          description: savePath,
+          color: "success",
+          timeout: 3000,
+        });
+      }
+    } catch (e) {
+      console.error("Failed to export:", e);
+    }
+  };
+
+  const totalPages = Math.max(1, Math.ceil(pageData.total / PAGE_SIZE));
+
+  const statusTabs = [
+    { key: "all", label: `全部 (${summary?.total ?? 0})` },
+    { key: "success", label: `成功 (${summary?.succeeded ?? 0})` },
+    { key: "fail", label: `失败 (${summary?.failed ?? 0})` },
+    { key: "skip", label: `跳过 (${summary?.skipped ?? 0})` },
+  ];
 
   return (
     <Modal
+      ref={batchTargetRef}
       isOpen={isOpen && !!summary}
       onOpenChange={(open) => {
         if (!open) onClose();
@@ -142,7 +208,7 @@ function BatchSummaryModal({
       size="lg"
       scrollBehavior="inside"
       classNames={{
-        base: "max-w-[560px]",
+        base: "max-w-[600px]",
         header: "border-b border-divider pb-3",
         body: "py-4",
         footer: "border-t border-divider",
@@ -151,7 +217,7 @@ function BatchSummaryModal({
       <ModalContent>
         {() => summary ? (
           <>
-            <ModalHeader className="flex items-center justify-between gap-3 pr-10">
+            <ModalHeader {...batchMoveProps} className="flex items-center justify-between gap-3 pr-10 cursor-move select-none">
               <div className="text-base font-semibold">处理完成</div>
               <div className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
                 hasError ? "bg-danger-100 text-danger-700" :
@@ -165,6 +231,12 @@ function BatchSummaryModal({
             <ModalBody>
               <div className="text-xs text-foreground-500">
                 共 {summary.total} 个文件 · 用时 {formatElapsed(summary.elapsed_ms)}
+                {summary.started_at && (
+                  <> · 开始 {formatTime(summary.started_at)}</>
+                )}
+                {summary.finished_at && (
+                  <> · 完成 {formatTime(summary.finished_at)}</>
+                )}
               </div>
 
               <div className="grid grid-cols-4 gap-2">
@@ -174,69 +246,94 @@ function BatchSummaryModal({
                 <SummaryMetric label="取消" value={summary.cancelled} tone="default" />
               </div>
 
-              {summary.outputs.length > 0 && (
-                <div className="rounded-md border border-divider bg-content2 p-3">
-                  <SummarySectionHeader
-                    title="输出文件"
-                    copyLabel={copiedKey === "outputs" ? "已复制" : "复制"}
-                    onCopy={() => void handleCopy("outputs", summary.outputs.join("\n"))}
-                  />
-                  <div className="max-h-[110px] space-y-1 overflow-auto font-mono text-[11px] text-success-700">
-                    {summary.outputs.map((path, index) => (
-                      <div key={index} className="truncate" title={path}>{path}</div>
-                    ))}
-                  </div>
-                </div>
-              )}
+              <Tabs
+                selectedKey={statusFilter}
+                onSelectionChange={handleTabChange}
+                size="sm"
+                variant="light"
+                classNames={{ tabList: "gap-1", tab: "text-xs h-7 px-2" }}
+              >
+                {statusTabs.map((tab) => (
+                  <Tab key={tab.key} title={tab.label} />
+                ))}
+              </Tabs>
 
-              {summary.failures.length > 0 && (
-                <SummaryIssueList
-                  title="失败文件"
-                  issues={summary.failures}
-                  tone="danger"
-                  copyLabel={copiedKey === "failures" ? "已复制" : "复制"}
-                  onCopy={() => void handleCopy("failures", formatIssues(summary.failures))}
-                />
-              )}
-              {summary.skipped_files.length > 0 && (
-                <SummaryIssueList
-                  title="跳过文件"
-                  issues={summary.skipped_files}
-                  tone="warning"
-                  copyLabel={copiedKey === "skipped" ? "已复制" : "复制"}
-                  onCopy={() => void handleCopy("skipped", formatIssues(summary.skipped_files))}
-                />
+              <div className="min-h-[120px]">
+                {loading ? (
+                  <div className="flex items-center justify-center py-8 text-xs text-foreground-500">
+                    加载中...
+                  </div>
+                ) : pageData.items.length === 0 ? (
+                  <div className="flex items-center justify-center py-8 text-xs text-foreground-500">
+                    暂无数据
+                  </div>
+                ) : (
+                  <div className="space-y-1 font-mono text-[11px]">
+                    {pageData.items.map((item) => {
+                      const isIssue = item.status === "fail" || item.status === "skip";
+                      const toneClass =
+                        item.status === "success" ? "text-success-700" :
+                        item.status === "fail" ? "text-danger-600" :
+                        item.status === "skip" ? "text-warning-600" :
+                        "text-foreground-500";
+                      return (
+                        <div key={item.id} className="rounded-md bg-content2 px-2 py-1.5">
+                          <div className="flex items-center gap-2">
+                            <span className={`shrink-0 text-[10px] font-medium ${toneClass}`}>
+                              {item.status === "success" ? "成功" :
+                               item.status === "fail" ? "失败" :
+                               item.status === "skip" ? "跳过" :
+                               item.status === "processing" ? "处理中" : "待处理"}
+                            </span>
+                            <span className="flex-1 truncate text-foreground" title={item.file_path}>
+                              {basename(item.file_path)}
+                            </span>
+                            {item.processing_time_ms != null && (
+                              <span className="shrink-0 text-[10px] text-foreground-400">
+                                {item.processing_time_ms}ms
+                              </span>
+                            )}
+                          </div>
+                          {isIssue && item.error_message && (
+                            <div className="mt-0.5 truncate text-foreground-500" title={item.error_message}>
+                              {item.error_message}
+                            </div>
+                          )}
+                          {item.status === "success" && item.output_path && (
+                            <div className="mt-0.5 truncate text-foreground-400" title={item.output_path}>
+                              → {item.output_path}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {totalPages > 1 && (
+                <div className="flex justify-center">
+                  <Pagination
+                    total={totalPages}
+                    page={page}
+                    onChange={handlePageChange}
+                    size="sm"
+                    showControls
+                  />
+                </div>
               )}
             </ModalBody>
 
             <ModalFooter>
+              <Button variant="flat" onPress={() => void handleExport()}>
+                导出 Excel
+              </Button>
               <Button color="primary" onPress={onClose}>关闭</Button>
             </ModalFooter>
           </>
         ) : null}
       </ModalContent>
     </Modal>
-  );
-}
-
-function SummarySectionHeader({
-  title,
-  className = "text-foreground",
-  copyLabel,
-  onCopy,
-}: {
-  title: string;
-  className?: string;
-  copyLabel: string;
-  onCopy: () => void;
-}) {
-  return (
-    <div className="mb-2 flex items-center justify-between gap-2">
-      <div className={`text-xs font-semibold ${className}`}>{title}</div>
-      <Button size="sm" variant="light" className="h-6 px-2 text-xs" onPress={onCopy}>
-        {copyLabel}
-      </Button>
-    </div>
   );
 }
 
@@ -262,68 +359,6 @@ function SummaryMetric({
   );
 }
 
-function SummaryIssueList({
-  title,
-  issues,
-  tone,
-  copyLabel,
-  onCopy,
-}: {
-  title: string;
-  issues: BatchIssue[];
-  tone: "danger" | "warning";
-  copyLabel: string;
-  onCopy: () => void;
-}) {
-  const titleColor = tone === "danger" ? "text-danger-600" : "text-warning-600";
-
-  return (
-    <div className="rounded-md border border-divider bg-content2 p-3">
-      <SummarySectionHeader
-        title={title}
-        className={titleColor}
-        copyLabel={copyLabel}
-        onCopy={onCopy}
-      />
-      <div className="max-h-[120px] space-y-1 overflow-auto text-xs">
-        {issues.map((issue, index) => (
-          <div key={index} className="grid grid-cols-[120px_minmax(0,1fr)] gap-2">
-            <span className="truncate font-mono text-foreground-500" title={issue.file}>
-              {basename(issue.file)}
-            </span>
-            <span className="break-all text-foreground-600">{issue.message}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-async function copyText(text: string): Promise<void> {
-  if (navigator.clipboard?.writeText) {
-    await navigator.clipboard.writeText(text);
-    return;
-  }
-
-  const textarea = document.createElement("textarea");
-  textarea.value = text;
-  textarea.setAttribute("readonly", "");
-  textarea.style.position = "fixed";
-  textarea.style.left = "-9999px";
-  document.body.appendChild(textarea);
-  textarea.select();
-
-  try {
-    document.execCommand("copy");
-  } finally {
-    document.body.removeChild(textarea);
-  }
-}
-
-function formatIssues(issues: BatchIssue[]): string {
-  return issues.map((issue) => `${issue.file}\t${issue.message}`).join("\n");
-}
-
 function basename(path: string): string {
   return path.split(/[/\\]/).pop() || path;
 }
@@ -337,6 +372,10 @@ function formatElapsed(ms: number): string {
   if (minutes === 0) return `${seconds} 秒`;
 
   return `${minutes} 分 ${seconds} 秒`;
+}
+
+function formatTime(ts: number): string {
+  return new Date(ts).toLocaleTimeString();
 }
 
 function UpdatePanel() {

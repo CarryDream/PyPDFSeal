@@ -15,6 +15,8 @@ interface LogEntry {
   color: string;
 }
 
+const LOG_LIMIT = 100;
+
 interface ConfigState {
   // Seal
   sealEnabled: boolean;
@@ -40,6 +42,11 @@ interface ConfigState {
   files: string[];
   outputDir: string;
 
+  // File list pagination
+  fileListPage: number;
+  fileListPageSize: number;
+  fileListTotal: number;
+
   // Batch
   batchRunning: boolean;
   batchPaused: boolean;
@@ -52,6 +59,14 @@ interface ConfigState {
   // Preview
   selectedFileIndex: number;
   previewScale: number;
+
+  // Layout
+  leftWidth: number;
+  rightWidth: number;
+  leftCollapsed: boolean;
+  rightCollapsed: boolean;
+  logPanelHeight: number;
+  logPanelMode: "normal" | "minimized" | "maximized";
 
   // Actions
   setSealImagePath: (path: string) => void;
@@ -78,6 +93,13 @@ interface ConfigState {
   clearLogs: () => void;
   setSelectedFileIndex: (i: number) => void;
   setPreviewScale: (s: number) => void;
+  setFileListPage: (page: number) => void;
+  setLeftWidth: (w: number) => void;
+  setRightWidth: (w: number) => void;
+  setLeftCollapsed: (v: boolean) => void;
+  setRightCollapsed: (v: boolean) => void;
+  setLogPanelHeight: (h: number) => void;
+  setLogPanelMode: (m: "normal" | "minimized" | "maximized") => void;
 }
 
 const defaultPosition: PositionConfig = {
@@ -155,6 +177,9 @@ export const useConfigStore = create<ConfigState>((set) => ({
   updateStatus: defaultUpdateStatus,
   files: [],
   outputDir: "",
+  fileListPage: 1,
+  fileListPageSize: 50,
+  fileListTotal: 0,
   batchRunning: false,
   batchPaused: false,
   batchProgress: null,
@@ -164,6 +189,12 @@ export const useConfigStore = create<ConfigState>((set) => ({
   logs: [],
   selectedFileIndex: 0,
   previewScale: 1.0,
+  leftWidth: 280,
+  rightWidth: 280,
+  leftCollapsed: false,
+  rightCollapsed: false,
+  logPanelHeight: 180,
+  logPanelMode: "normal",
 
   setSealImagePath: (path) => set({ sealImagePath: path }),
   setSealEnabled: (enabled) => set({ sealEnabled: enabled }),
@@ -182,7 +213,7 @@ export const useConfigStore = create<ConfigState>((set) => ({
   setFiles: (files) => set({ files }),
   addFiles: (newFiles) =>
     set((s) => ({
-      files: [...s.files, ...newFiles.filter((f) => !s.files.includes(f))],
+      files: appendUniqueFiles(s.files, newFiles),
     })),
   removeFile: (index) =>
     set((s) => ({ files: s.files.filter((_, i) => i !== index) })),
@@ -195,12 +226,37 @@ export const useConfigStore = create<ConfigState>((set) => ({
   setBatchSummaryOpen: (open) => set((s) => ({ batchSummaryOpen: open && !!s.batchSummary })),
   addLog: (message, color = "#333") =>
     set((s) => ({
-      logs: [
+      logs: tail([
         ...s.logs,
         { time: new Date().toLocaleTimeString(), message, color },
-      ],
+      ], LOG_LIMIT),
     })),
   clearLogs: () => set({ logs: [] }),
   setSelectedFileIndex: (i) => set({ selectedFileIndex: i }),
   setPreviewScale: (s) => set({ previewScale: s }),
+  setFileListPage: (page) => set({ fileListPage: page }),
+  setLeftWidth: (w) => set({ leftWidth: w }),
+  setRightWidth: (w) => set({ rightWidth: w }),
+  setLeftCollapsed: (v) => set({ leftCollapsed: v }),
+  setRightCollapsed: (v) => set({ rightCollapsed: v }),
+  setLogPanelHeight: (h) => set({ logPanelHeight: h }),
+  setLogPanelMode: (m) => set({ logPanelMode: m }),
 }));
+
+function appendUniqueFiles(existing: string[], incoming: string[]): string[] {
+  if (incoming.length === 0) return existing;
+
+  const seen = new Set(existing);
+  const next = [...existing];
+  for (const file of incoming) {
+    if (seen.has(file)) continue;
+    seen.add(file);
+    next.push(file);
+  }
+  return next;
+}
+
+function tail<T>(items: T[], limit: number): T[] {
+  if (items.length <= limit) return items;
+  return items.slice(items.length - limit);
+}

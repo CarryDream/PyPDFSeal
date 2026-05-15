@@ -29,7 +29,12 @@ export default function ProgressPanel() {
       (sealEnabled && Boolean(sealImagePath)) ||
       (watermark.enabled && watermark.text.trim().length > 0) ||
       (cert.enabled && cert.cert_path.length > 0);
-    if (files.length === 0 || !hasOperation) return;
+    if (files.length === 0 || !hasOperation) {
+      if (files.length > 0 && !hasOperation) {
+        addLog("请先配置至少一个操作（印章、水印或签名）", "#ff9800");
+      }
+      return;
+    }
 
     const options: SealOptions = {
       seal_image_path: sealEnabled ? sealImagePath : "",
@@ -81,11 +86,6 @@ export default function ProgressPanel() {
   const progressPct = batchProgress
     ? Math.round((batchProgress.done / batchProgress.total) * 100)
     : 0;
-  const canStart =
-    (sealEnabled && Boolean(sealImagePath)) ||
-    (watermark.enabled && watermark.text.trim().length > 0) ||
-    (cert.enabled && cert.cert_path.length > 0);
-
   return (
     <div className="flex items-center gap-4 px-3 py-2 bg-content1 border-b border-divider">
       {/* 进度条 */}
@@ -118,7 +118,7 @@ export default function ProgressPanel() {
           size="sm"
           color="primary"
           onPress={handleStart}
-          isDisabled={batchRunning || files.length === 0 || !canStart}
+          isDisabled={batchRunning || files.length === 0}
         >
           开始
         </Button>

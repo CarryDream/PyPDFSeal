@@ -52,11 +52,21 @@ function versionPartToNumber(part: string) {
   return match ? Number(match[0]) : 0;
 }
 
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`Timed out after ${ms}ms`)), ms);
+    promise.then(
+      (v) => { clearTimeout(timer); resolve(v); },
+      (e) => { clearTimeout(timer); reject(e); },
+    );
+  });
+}
+
 export async function checkForUpdates(): Promise<UpdateCheckResult> {
   const currentVersion = await getAppVersion();
 
   try {
-    const update = await check();
+    const update = await withTimeout(check(), 8000);
     pendingUpdate = update;
 
     if (update?.available) {
@@ -73,9 +83,12 @@ export async function checkForUpdates(): Promise<UpdateCheckResult> {
     pendingUpdate = null;
   }
 
-  const response = await fetch(LATEST_RELEASE_URL, {
-    headers: { Accept: "application/vnd.github+json" },
-  });
+  const response = await withTimeout(
+    fetch(LATEST_RELEASE_URL, {
+      headers: { Accept: "application/vnd.github+json" },
+    }),
+    8000,
+  );
 
   if (!response.ok) {
     throw new Error(`GitHub releases request failed: ${response.status}`);

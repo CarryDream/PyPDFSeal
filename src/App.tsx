@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState, type CSSProperties, type PointerEvent } from "react";
+import { useEffect, useRef, type CSSProperties, type PointerEvent } from "react";
 import { ping } from "./utils/ipc";
 import { useAppSettings, useBatchProcess, useConfigPersistence } from "./hooks";
+import { useConfigStore } from "./store/configStore";
 import Sidebar from "./components/layout/Sidebar";
 import Preview from "./components/layout/Preview";
 import FileList from "./components/layout/FileList";
@@ -11,7 +12,6 @@ import "./App.css";
 import "./components.css";
 import "./pdf-viewer.css";
 
-const DEFAULT_SIDE_WIDTH = 280;
 const MIN_SIDE_WIDTH = 220;
 const MAX_SIDE_WIDTH = 520;
 const MIN_CENTER_WIDTH = 360;
@@ -21,10 +21,10 @@ export default function App() {
   useConfigPersistence();
   useAppSettings();
   const workspaceRef = useRef<HTMLDivElement>(null);
-  const [leftWidth, setLeftWidth] = useState(DEFAULT_SIDE_WIDTH);
-  const [rightWidth, setRightWidth] = useState(DEFAULT_SIDE_WIDTH);
-  const [leftCollapsed, setLeftCollapsed] = useState(false);
-  const [rightCollapsed, setRightCollapsed] = useState(false);
+  const {
+    leftWidth, rightWidth, leftCollapsed, rightCollapsed,
+    setLeftWidth, setRightWidth, setLeftCollapsed, setRightCollapsed,
+  } = useConfigStore();
 
   useEffect(() => {
     ping().then((r) => console.log("IPC ping:", r));
@@ -106,7 +106,7 @@ export default function App() {
           type="button"
           className={`side-toggle left-toggle ${leftCollapsed ? "is-collapsed" : ""}`}
           title={leftCollapsed ? "展开左侧区域" : "隐藏左侧区域"}
-          onClick={() => setLeftCollapsed((value) => !value)}
+          onClick={() => setLeftCollapsed(!leftCollapsed)}
         >
           {leftCollapsed ? ">" : "<"}
         </button>
@@ -115,7 +115,7 @@ export default function App() {
           type="button"
           className={`side-toggle right-toggle ${rightCollapsed ? "is-collapsed" : ""}`}
           title={rightCollapsed ? "展开右侧区域" : "隐藏右侧区域"}
-          onClick={() => setRightCollapsed((value) => !value)}
+          onClick={() => setRightCollapsed(!rightCollapsed)}
         >
           {rightCollapsed ? "<" : ">"}
         </button>

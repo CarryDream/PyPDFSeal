@@ -98,7 +98,7 @@ impl Default for WatermarkConfig {
         Self {
             enabled: false,
             text: String::new(),
-            font_family: "SimSun".into(),
+            font_family: "华文新魏".into(),
             font_path: String::new(),
             font_size: 24.0,
             opacity: 0.15,

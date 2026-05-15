@@ -1,28 +1,40 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
-import { Button, Checkbox } from "@heroui/react";
+import { Button, Checkbox, Pagination, addToast } from "@heroui/react";
 import { useConfigStore } from "../../store/configStore";
-import { scanPdfDir } from "../../utils/ipc";
+import { scanPdfDir, dbImportFiles } from "../../utils/ipc";
 
 export default function FileList() {
   const {
     files,
     addFiles,
     removeFile,
+    setFiles,
     outputDir,
     setOutputDir,
     selectedFileIndex,
     setSelectedFileIndex,
+    fileListPage,
+    fileListPageSize,
+    setFileListPage,
   } = useConfigStore();
   const [selected, setSelected] = useState<Set<number>>(new Set());
 
-  const toggleSelect = (index: number) => {
+  const totalPages = Math.max(1, Math.ceil(files.length / fileListPageSize));
+  const pageFiles = useMemo(() => {
+    const start = (fileListPage - 1) * fileListPageSize;
+    return files.slice(start, start + fileListPageSize);
+  }, [files, fileListPage, fileListPageSize]);
+
+  const pageStart = (fileListPage - 1) * fileListPageSize;
+
+  const toggleSelect = (globalIndex: number) => {
     setSelected((prev) => {
       const next = new Set(prev);
-      if (next.has(index)) {
-        next.delete(index);
+      if (next.has(globalIndex)) {
+        next.delete(globalIndex);
       } else {
-        next.add(index);
+        next.add(globalIndex);
       }
       return next;
     });
@@ -38,16 +50,20 @@ export default function FileList() {
 
   const handleDeleteSelected = () => {
     if (selected.size === 0) return;
-    const store = useConfigStore.getState();
     const remaining = files.filter((_, i) => !selected.has(i));
     const removedBeforeCurrent = [...selected].filter((i) => i < selectedFileIndex).length;
     const nextSelectedIndex = selected.has(selectedFileIndex)
       ? Math.min(selectedFileIndex, Math.max(remaining.length - 1, 0))
       : Math.max(selectedFileIndex - removedBeforeCurrent, 0);
 
-    store.setFiles(remaining);
-    store.setSelectedFileIndex(nextSelectedIndex);
+    setFiles(remaining);
+    setSelectedFileIndex(nextSelectedIndex);
     setSelected(new Set());
+    const newTotalPages = Math.max(1, Math.ceil(remaining.length / fileListPageSize));
+    if (fileListPage > newTotalPages) {
+      setFileListPage(newTotalPages);
+    }
+    addToast({ title: `已删除 ${selected.size} 个文件`, color: "primary", timeout: 2000 });
   };
 
   const handleAddFiles = async () => {
@@ -57,7 +73,20 @@ export default function FileList() {
     });
     if (sel) {
       const paths = Array.isArray(sel) ? sel : [sel];
-      addFiles(paths);
+      const existing = new Set(files);
+      const newPaths = paths.filter((p) => !existing.has(p));
+      const dupCount = paths.length - newPaths.length;
+      if (newPaths.length > 0) {
+        addFiles(newPaths);
+        try { await dbImportFiles(newPaths); } catch (e) { console.warn("DB import:", e); }
+      }
+      if (dupCount > 0 && newPaths.length > 0) {
+        addToast({ title: `新增 ${newPaths.length} 个，${dupCount} 个已存在`, color: "warning", timeout: 2500 });
+      } else if (dupCount > 0) {
+        addToast({ title: `${dupCount} 个文件已存在`, color: "warning", timeout: 2000 });
+      } else {
+        addToast({ title: `已添加 ${newPaths.length} 个文件`, color: "success", timeout: 2000 });
+      }
     }
   };
 
@@ -74,19 +103,39 @@ export default function FileList() {
       try {
         const pdfs = await scanPdfDir(dir as string);
         if (pdfs.length > 0) {
-          addFiles(pdfs);
+          const existing = new Set(files);
+          const newPaths = pdfs.filter((p) => !existing.has(p));
+          const dupCount = pdfs.length - newPaths.length;
+          if (newPaths.length > 0) {
+            addFiles(newPaths);
+            try { await dbImportFiles(newPaths); } catch (e) { console.warn("DB import:", e); }
+          }
+          if (dupCount > 0 && newPaths.length > 0) {
+            addToast({ title: `新增 ${newPaths.length} 个，${dupCount} 个已存在`, color: "warning", timeout: 2500 });
+          } else if (dupCount > 0) {
+            addToast({ title: `${dupCount} 个文件已存在`, color: "warning", timeout: 2000 });
+          } else {
+            addToast({ title: `从目录导入 ${newPaths.length} 个文件`, color: "success", timeout: 2000 });
+          }
+        } else {
+          addToast({ title: "目录中未找到 PDF 文件", color: "warning", timeout: 2000 });
         }
       } catch (e) {
         console.error("Failed to scan directory:", e);
+        addToast({ title: "目录扫描失败", color: "danger", timeout: 2000 });
       }
     }
   };
 
   const handleClearAll = () => {
-    const store = useConfigStore.getState();
-    store.setFiles([]);
-    store.setSelectedFileIndex(0);
+    const count = files.length;
+    setFiles([]);
+    setSelectedFileIndex(0);
     setSelected(new Set());
+    setFileListPage(1);
+    if (count > 0) {
+      addToast({ title: `已清空 ${count} 个文件`, color: "primary", timeout: 2000 });
+    }
   };
 
   return (
@@ -132,67 +181,82 @@ export default function FileList() {
         {files.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center text-foreground-500 text-xs py-8">
             <div className="mb-1">暂无文件</div>
-            <div>点击上方「添加」或「目录」导入 PDF</div>
+            <div>点击「添加」选择文件，或「目录」递归导入 PDF</div>
           </div>
         ) : (
-          files.map((f, i) => {
-            const fileName = f.split(/[/\\]/).pop() || f;
-            const isActive = i === selectedFileIndex;
-            const isChecked = selected.has(i);
+          <div className="space-y-0.5">
+            {pageFiles.map((f, offset) => {
+              const i = pageStart + offset;
+              const fileName = f.split(/[/\\]/).pop() || f;
+              const isActive = i === selectedFileIndex;
+              const isChecked = selected.has(i);
 
-            return (
-              <div
-                key={i}
-                onClick={() => setSelectedFileIndex(i)}
-                className={`group mb-1 flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors ${
-                  isActive
-                    ? "bg-primary/10 border-l-3 border-primary"
-                    : "hover:bg-content3"
-                }`}
-              >
-                <Checkbox
-                  isSelected={isChecked}
-                  onValueChange={() => toggleSelect(i)}
-                  onClick={(e) => e.stopPropagation()}
-                  size="sm"
-                />
-
-                <span
-                  className="flex-1 truncate text-foreground"
-                  title={f}
+              return (
+                <div
+                  key={i}
+                  onClick={() => setSelectedFileIndex(i)}
+                  className={`group flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors ${
+                    isActive
+                      ? "bg-primary/10 border-l-3 border-primary"
+                      : "hover:bg-content3"
+                  }`}
                 >
-                  {fileName}
-                </span>
+                  <Checkbox
+                    isSelected={isChecked}
+                    onValueChange={() => toggleSelect(i)}
+                    onClick={(e) => e.stopPropagation()}
+                    size="sm"
+                  />
 
-                <Button
-                  size="sm"
-                  variant="light"
-                  isIconOnly
-                  onPress={() => {
-                    removeFile(i);
-                    if (i === selectedFileIndex) {
-                      setSelectedFileIndex(Math.min(i, Math.max(files.length - 2, 0)));
-                    } else if (i < selectedFileIndex) {
-                      setSelectedFileIndex(selectedFileIndex - 1);
-                    }
-                    setSelected((prev) => {
-                      const next = new Set<number>();
-                      for (const idx of prev) {
-                        if (idx < i) next.add(idx);
-                        else if (idx > i) next.add(idx - 1);
+                  <span
+                    className="flex-1 truncate text-foreground"
+                    title={f}
+                  >
+                    {fileName}
+                  </span>
+
+                  <Button
+                    size="sm"
+                    variant="light"
+                    isIconOnly
+                    onPress={() => {
+                      removeFile(i);
+                      if (i === selectedFileIndex) {
+                        setSelectedFileIndex(Math.min(i, Math.max(files.length - 2, 0)));
+                      } else if (i < selectedFileIndex) {
+                        setSelectedFileIndex(selectedFileIndex - 1);
                       }
-                      return next;
-                    });
-                  }}
-                  className="opacity-40 group-hover:opacity-100 min-w-0 w-6 h-6"
-                >
-                  ×
-                </Button>
-              </div>
-            );
-          })
+                      setSelected((prev) => {
+                        const next = new Set<number>();
+                        for (const idx of prev) {
+                          if (idx < i) next.add(idx);
+                          else if (idx > i) next.add(idx - 1);
+                        }
+                        return next;
+                      });
+                    }}
+                    className="opacity-40 group-hover:opacity-100 min-w-0 w-6 h-6"
+                  >
+                    ×
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
+
+      {files.length > fileListPageSize && (
+        <div className="shrink-0 flex justify-center border-t border-divider bg-content1 px-3 py-2">
+          <Pagination
+            total={totalPages}
+            page={fileListPage}
+            onChange={setFileListPage}
+            size="sm"
+            showControls
+          />
+        </div>
+      )}
 
       <div className="shrink-0 border-t border-divider bg-content1 p-3">
         <div className="mb-1.5 tool-panel-title">输出目录</div>

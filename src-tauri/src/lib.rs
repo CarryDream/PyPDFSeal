@@ -1,5 +1,6 @@
 mod commands;
 mod core;
+mod db;
 mod error;
 mod pdf;
 mod text;
@@ -126,6 +127,12 @@ pub fn run() {
         .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
+            let data_dir = app.path().app_data_dir().unwrap_or_else(|_| {
+                std::path::PathBuf::from(".")
+            });
+            let database = db::Database::open(&data_dir)
+                .expect("failed to open database");
+            app.manage(database);
             build_tray(app)?;
             Ok(())
         })
@@ -167,6 +174,13 @@ pub fn run() {
             commands::batch::batch_resume,
             commands::batch::batch_cancel,
             commands::dialogs::scan_pdf_dir,
+            commands::db::db_get_config,
+            commands::db::db_set_config_batch,
+            commands::db::db_import_files,
+            commands::db::db_remove_file,
+            commands::db::db_get_files_page,
+            commands::db::db_export_xlsx,
+            commands::db::db_clear_history,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
