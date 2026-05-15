@@ -1,11 +1,14 @@
+import { useState } from "react";
+import { createPortal } from "react-dom";
 import { open } from "@tauri-apps/plugin-dialog";
-import { Button, Checkbox, Divider, Input } from "@heroui/react";
+import { Button, Checkbox, Divider, Image, Input } from "@heroui/react";
 import { useConfigStore } from "../../store/configStore";
 import { localFileSrc } from "../../utils/localFile";
 import PositionPanel from "./PositionPanel";
 
 export default function SealPanel() {
   const { sealEnabled, sealImagePath, sealWidth, sealHeight, sealOpacity } = useConfigStore();
+  const [lightbox, setLightbox] = useState(false);
   const {
     setSealEnabled,
     setSealImagePath,
@@ -57,46 +60,83 @@ export default function SealPanel() {
         </div>
       </div>
 
-      {/* 印章预览 */}
+      {/* 印章预览 & 尺寸 */}
       {sealImagePath && (
-        <div className="flex flex-col items-center gap-1.5">
-          <div className="text-xs font-medium text-foreground-600 self-start">预览</div>
-          <div className="bg-white border border-divider rounded-lg p-3 shadow-sm max-w-[140px]">
-            <img
-              src={localFileSrc(sealImagePath)}
-              alt="印章预览"
-              className="max-w-[120px] max-h-[120px] object-contain"
-            />
+        <div className="flex items-start gap-3">
+          <div className="shrink-0">
+            <div className="text-xs font-medium text-foreground-600 mb-1.5">预览</div>
+            <button
+              type="button"
+              onClick={() => setLightbox(true)}
+              className="block bg-white border border-divider rounded-lg p-2 shadow-sm cursor-zoom-in hover:border-primary transition-colors"
+            >
+              <Image
+                src={localFileSrc(sealImagePath)}
+                alt="印章预览"
+                width={80}
+                height={80}
+                isZoomed
+                radius="sm"
+                removeWrapper
+              />
+            </button>
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-xs font-medium text-foreground-600 mb-1.5">尺寸 (pt)</div>
+            <div className="flex flex-col gap-2">
+              <Input
+                type="number"
+                label="宽度"
+                value={sealWidth.toString()}
+                onValueChange={(val) => setSealWidth(Number(val) || 10)}
+                size="sm"
+                min={10}
+                max={600}
+                className="min-w-0"
+              />
+              <Input
+                type="number"
+                label="高度"
+                value={sealHeight.toString()}
+                onValueChange={(val) => setSealHeight(Number(val) || 10)}
+                size="sm"
+                min={10}
+                max={600}
+                className="min-w-0"
+              />
+            </div>
           </div>
         </div>
       )}
 
-      {/* 尺寸设置 */}
-      <div>
-        <div className="text-xs font-medium text-foreground-600 mb-1.5">尺寸 (pt)</div>
-        <div className="grid grid-cols-2 gap-2">
-          <Input
-            type="number"
-            label="宽度"
-            value={sealWidth.toString()}
-            onValueChange={(val) => setSealWidth(Number(val) || 10)}
-            size="sm"
-            min={10}
-            max={600}
-            className="min-w-0"
-          />
-          <Input
-            type="number"
-            label="高度"
-            value={sealHeight.toString()}
-            onValueChange={(val) => setSealHeight(Number(val) || 10)}
-            size="sm"
-            min={10}
-            max={600}
-            className="min-w-0"
-          />
+      {/* 无图片时仍显示尺寸设置 */}
+      {!sealImagePath && (
+        <div>
+          <div className="text-xs font-medium text-foreground-600 mb-1.5">尺寸 (pt)</div>
+          <div className="grid grid-cols-2 gap-2">
+            <Input
+              type="number"
+              label="宽度"
+              value={sealWidth.toString()}
+              onValueChange={(val) => setSealWidth(Number(val) || 10)}
+              size="sm"
+              min={10}
+              max={600}
+              className="min-w-0"
+            />
+            <Input
+              type="number"
+              label="高度"
+              value={sealHeight.toString()}
+              onValueChange={(val) => setSealHeight(Number(val) || 10)}
+              size="sm"
+              min={10}
+              max={600}
+              className="min-w-0"
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* 透明度 */}
       <div>
@@ -127,6 +167,21 @@ export default function SealPanel() {
         <PositionPanel />
       </div>
         </>
+      )}
+
+      {lightbox && sealImagePath && createPortal(
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60"
+          onClick={() => setLightbox(false)}
+        >
+          <img
+            src={localFileSrc(sealImagePath)}
+            alt="印章大图"
+            className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg shadow-2xl bg-white p-4"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>,
+        document.body,
       )}
     </div>
   );

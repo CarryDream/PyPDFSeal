@@ -74,7 +74,7 @@ export default function FileList() {
     if (fileListPage > newTotalPages) {
       setFileListPage(newTotalPages);
     }
-    addToast({ title: `已删除 ${selected.size} 个文件`, color: "primary", timeout: 2000 });
+    addToast({ title: `已删除 ${selected.size} 个文件`, color: "success", timeout: 2000 });
   };
 
   const handleAddFiles = async () => {
@@ -199,7 +199,7 @@ export default function FileList() {
     setSelected(new Set());
     setFileListPage(1);
     if (count > 0) {
-      addToast({ title: `已清空 ${count} 个文件`, color: "primary", timeout: 2000 });
+      addToast({ title: `已清空 ${count} 个文件`, color: "success", timeout: 2000 });
     }
   };
 
@@ -301,6 +301,7 @@ export default function FileList() {
                     variant="light"
                     isIconOnly
                     onPress={() => {
+                      const name = f.split(/[/\\]/).pop() || f;
                       removeFile(i);
                       if (i === selectedFileIndex) {
                         setSelectedFileIndex(Math.min(i, Math.max(files.length - 2, 0)));
@@ -315,6 +316,7 @@ export default function FileList() {
                         }
                         return next;
                       });
+                      addToast({ title: `已移除: ${name}`, color: "success", timeout: 1500 });
                     }}
                     className="opacity-40 group-hover:opacity-100 min-w-0 w-6 h-6"
                   >

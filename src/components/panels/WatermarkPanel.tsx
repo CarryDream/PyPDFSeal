@@ -1,5 +1,6 @@
 import { Checkbox, Input, Select, SelectItem } from "@heroui/react";
 import { useConfigStore } from "../../store/configStore";
+import HoneycombColorPicker from "./HoneycombColorPicker";
 import type { WatermarkLayout, PageScope } from "../../types";
 
 const layoutOptions = [
@@ -104,20 +105,10 @@ export default function WatermarkPanel() {
             />
 
             {/* 颜色选择器 */}
-            <div className="flex flex-col gap-1 min-w-[88px]">
-              <div className="text-xs text-foreground-600">颜色</div>
-              <div className="flex items-center gap-2">
-                <div className="w-9 h-8 rounded-md border border-divider overflow-hidden shadow-sm">
-                  <input
-                    type="color"
-                    value={watermark.color}
-                    onChange={(e) => setWatermark({ color: e.target.value })}
-                    className="w-12 h-12 -m-1 cursor-pointer border-0 bg-transparent"
-                  />
-                </div>
-                <div className="text-xs font-mono text-foreground-500">{watermark.color}</div>
-              </div>
-            </div>
+            <HoneycombColorPicker
+              value={watermark.color}
+              onChange={(color) => setWatermark({ color })}
+            />
           </div>
 
           {/* 布局 */}
