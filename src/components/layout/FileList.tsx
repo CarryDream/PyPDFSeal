@@ -349,7 +349,7 @@ export default function FileList() {
             value={outputDir}
             placeholder="sealed 子目录"
             readOnly
-            className="min-w-0 flex-1 rounded-md border border-divider bg-white px-2 py-1.5 text-xs text-foreground-600"
+            className="min-w-0 flex-1 rounded-md border border-divider bg-content1 px-2 py-1.5 text-xs text-foreground-600"
           />
           <Button size="sm" variant="flat" onPress={handleSelectOutput}>
             选择

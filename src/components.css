@@ -23,10 +23,11 @@
   width: 100%;
   display: flex;
   flex-direction: column;
-  background: #ffffff;
+  background: hsl(var(--heroui-content1));
   overflow: hidden;
-  border-top: 1px solid #d7dee8;
+  border-top: 1px solid hsl(var(--heroui-divider));
   box-shadow: 0 -2px 10px rgba(15, 23, 42, 0.05);
+  transition: background-color 0.3s, border-color 0.3s;
 }
 
 .log-content {
@@ -53,11 +54,12 @@
   top: 5px;
   height: 1px;
   background: transparent;
+  transition: background-color 0.2s;
 }
 
 .log-resize-handle:hover::after,
 .resizing-log-panel .log-resize-handle::after {
-  background: #2563eb;
+  background: hsl(var(--heroui-primary));
 }
 
 .resizing-log-panel {
@@ -77,23 +79,26 @@
   justify-content: space-between;
   align-items: center;
   font-size: 12px;
-  color: #555;
+  color: hsl(var(--heroui-foreground));
+  opacity: 0.7;
 }
 
 .settings-row strong {
-  color: #222;
+  color: hsl(var(--heroui-foreground));
   font-weight: 500;
+  opacity: 1;
 }
 
 .settings-note {
   font-size: 11px;
   line-height: 1.5;
-  color: #666;
+  color: hsl(var(--heroui-foreground));
+  opacity: 0.5;
 }
 
 .settings-error {
   font-size: 11px;
-  color: #d32f2f;
+  color: hsl(var(--heroui-danger));
 }
 
 /* === Preview 空状态 === */
@@ -113,15 +118,17 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #edf2f7;
-  color: #94a3b8;
+  background: hsl(var(--heroui-content2));
+  color: hsl(var(--heroui-foreground));
+  opacity: 0.4;
   font-size: 14px;
+  transition: background-color 0.3s;
 }
 
 .tool-panel-title {
   font-size: 12px;
   font-weight: 650;
-  color: #0f172a;
+  color: hsl(var(--heroui-foreground));
 }
 
 /* 注意：

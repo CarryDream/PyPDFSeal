@@ -5,7 +5,7 @@ import { useConfigStore } from "../../store/configStore";
 import { getAppVersion } from "../../utils/ipc";
 import { openReleasePage } from "../../utils/updates";
 import { checkAppUpdates, installAppUpdate } from "../../hooks/useAppSettings";
-import type { CloseBehavior, OutputNameMode, OutputStructureMode } from "../../types";
+import type { CloseBehavior, OutputNameMode, OutputStructureMode, ThemeMode } from "../../types";
 
 export default function SettingsPanel() {
   const {
@@ -24,6 +24,11 @@ export default function SettingsPanel() {
       .then((version) => setUpdateStatus({ current_version: version }))
       .catch((e) => setUpdateStatus({ error: String(e) }));
   }, [setUpdateStatus, updateStatus.current_version]);
+
+  const handleThemeKeys = (keys: any) => {
+    const value = Array.from(keys)[0] as ThemeMode | undefined;
+    if (value) setAppSettings({ theme: value });
+  };
 
   const handleCloseBehaviorChange = (value: string) => {
     setAppSettings({ close_behavior: value as CloseBehavior });
@@ -66,6 +71,17 @@ export default function SettingsPanel() {
       >
         启动时检查更新
       </Checkbox>
+
+      <Select
+        label="主题外观"
+        selectedKeys={[appSettings.theme ?? "light"]}
+        onSelectionChange={handleThemeKeys}
+        size="sm"
+      >
+        <SelectItem key="light">浅色</SelectItem>
+        <SelectItem key="dark">深色</SelectItem>
+        <SelectItem key="system">跟随系统</SelectItem>
+      </Select>
 
       <Select
         label="点击窗口关闭按钮"

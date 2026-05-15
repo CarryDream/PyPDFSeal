@@ -149,6 +149,7 @@ const defaultAppSettings: AppSettings = {
     text: "_sealed",
   },
   output_structure: "flat",
+  theme: "light",
 };
 
 const defaultUpdateStatus: UpdateStatus = {

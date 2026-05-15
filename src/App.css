@@ -7,7 +7,9 @@ html, body, #root {
   height: 100%;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   overflow: hidden;
-  background: #edf1f6;
+  background: hsl(var(--heroui-background));
+  color: hsl(var(--heroui-foreground));
+  transition: background-color 0.3s, color 0.3s;
 }
 
 /* 主布局 - 三栏 + 底部，按桌面工具而不是网页布局处理 */
@@ -17,7 +19,7 @@ html, body, #root {
   height: 100vh;
   min-height: 0;
   overflow: hidden;
-  background: #cfd7e3;
+  background: hsl(var(--heroui-divider));
 }
 
 .top-workspace {
@@ -29,30 +31,31 @@ html, body, #root {
   min-width: 0;
   gap: 1px;
   overflow: hidden;
-  background: #cfd7e3;
+  background: hsl(var(--heroui-divider));
 }
 
 .left-panel,
 .right-panel,
 .center-panel,
 .bottom-panel {
-  min-height: 0; /* 关键：防止 Grid + Flex 子元素高度塌陷 */
+  min-height: 0;
+  transition: background-color 0.3s;
 }
 
 .left-panel {
-  background: #f8fafc;
+  background: hsl(var(--heroui-content1));
   overflow: hidden;
   grid-column: 1;
 }
 
 .center-panel {
-  background: #e9eef5;
+  background: hsl(var(--heroui-content2));
   overflow: hidden;
   grid-column: 2;
 }
 
 .right-panel {
-  background: #f8fafc;
+  background: hsl(var(--heroui-content1));
   overflow: hidden;
   grid-column: 3;
   display: flex;
@@ -64,7 +67,7 @@ html, body, #root {
 }
 
 .bottom-panel {
-  background: #ffffff;
+  background: hsl(var(--heroui-content1));
   grid-row: 2;
   grid-column: 1;
   display: flex;
@@ -90,11 +93,12 @@ html, body, #root {
   left: 4px;
   width: 1px;
   background: transparent;
+  transition: background-color 0.2s;
 }
 
 .side-resize-handle:hover::after,
 .resizing-side-panel .side-resize-handle::after {
-  background: #2563eb;
+  background: hsl(var(--heroui-primary));
 }
 
 .left-resize-handle {
@@ -111,20 +115,21 @@ html, body, #root {
   z-index: 30;
   width: 18px;
   height: 28px;
-  border: 1px solid #cbd5e1;
-  background: #f8fafc;
-  color: #475569;
+  border: 1px solid hsl(var(--heroui-divider));
+  background: hsl(var(--heroui-content1));
+  color: hsl(var(--heroui-foreground));
   font-size: 10px;
   line-height: 1;
   cursor: pointer;
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.12);
   transform: translateY(-50%);
+  transition: border-color 0.2s, color 0.2s, background-color 0.2s;
 }
 
 .side-toggle:hover {
-  border-color: #2563eb;
-  color: #2563eb;
-  background: #ffffff;
+  border-color: hsl(var(--heroui-primary));
+  color: hsl(var(--heroui-primary));
+  background: hsl(var(--heroui-content1));
 }
 
 .left-toggle {

@@ -68,7 +68,7 @@ export default function SealPanel() {
             <button
               type="button"
               onClick={() => setLightbox(true)}
-              className="block bg-white border border-divider rounded-lg p-2 shadow-sm cursor-zoom-in hover:border-primary transition-colors"
+              className="block bg-content1 border border-divider rounded-lg p-2 shadow-sm cursor-zoom-in hover:border-primary transition-colors"
             >
               <Image
                 src={localFileSrc(sealImagePath)}
@@ -177,7 +177,7 @@ export default function SealPanel() {
           <img
             src={localFileSrc(sealImagePath)}
             alt="印章大图"
-            className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg shadow-2xl bg-white p-4"
+            className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg shadow-2xl bg-content1 p-4"
             onClick={(e) => e.stopPropagation()}
           />
         </div>,
