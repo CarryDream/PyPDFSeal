@@ -16,7 +16,12 @@ pub fn process_task(input_path: &str, options: &SealOptions) -> Result<String> {
         ));
     }
 
-    let output_path = build_output_path(input_path, &options.output_dir, &options.output_name);
+    let output_path = build_output_path(
+        input_path,
+        &options.output_dir,
+        &options.output_name,
+        &options.output_structure,
+    );
     let needs_stamp = !options.seal_image_path.is_empty()
         && options.seal_width > 0.0
         && options.seal_height > 0.0;
@@ -77,22 +82,37 @@ pub fn process_task(input_path: &str, options: &SealOptions) -> Result<String> {
     Ok(output_path)
 }
 
-fn build_output_path(input_path: &str, output_dir: &str, output_name: &OutputNameConfig) -> String {
+fn build_output_path(
+    input_path: &str,
+    output_dir: &str,
+    output_name: &OutputNameConfig,
+    output_structure: &OutputStructureMode,
+) -> String {
     let input = Path::new(input_path);
     let stem = input.file_stem().unwrap_or_default().to_string_lossy();
     let ext = input.extension().unwrap_or_default().to_string_lossy();
+    let input_dir = input.parent().unwrap_or(Path::new("."));
 
-    let dir = if output_dir.is_empty() {
-        input.parent().unwrap_or(Path::new("."))
+    let base_dir = if output_dir.is_empty() {
+        match output_structure {
+            OutputStructureMode::Flat => input_dir.join("sealed"),
+            OutputStructureMode::ParentFolder => {
+                input_dir.parent().unwrap_or(input_dir).join("sealed")
+            }
+        }
     } else {
-        Path::new(output_dir)
+        Path::new(output_dir).to_path_buf()
     };
 
-    // Create "sealed" subdirectory if no custom output dir
-    let target_dir = if output_dir.is_empty() {
-        dir.join("sealed")
-    } else {
-        dir.to_path_buf()
+    let target_dir = match output_structure {
+        OutputStructureMode::Flat => base_dir,
+        OutputStructureMode::ParentFolder => {
+            let group = input_dir
+                .file_name()
+                .filter(|name| !name.is_empty())
+                .unwrap_or_else(|| std::ffi::OsStr::new("未分组"));
+            base_dir.join(Path::new(group))
+        }
     };
 
     std::fs::create_dir_all(&target_dir).ok();

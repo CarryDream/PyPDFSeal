@@ -66,6 +66,10 @@ export function useConfigPersistence() {
                       ? (savedAppSettings.output_name as Record<string, unknown>)
                       : {}),
                   },
+                  output_structure:
+                    savedAppSettings.output_structure === "parent_folder"
+                      ? "parent_folder"
+                      : currentAppSettings.output_structure,
                 };
               } else {
                 partial[key] = saved[key];

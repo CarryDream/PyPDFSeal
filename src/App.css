@@ -7,7 +7,7 @@ html, body, #root {
   height: 100%;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   overflow: hidden;
-  background: #e5e7eb;
+  background: #edf1f6;
 }
 
 /* 主布局 - 三栏 + 底部，按桌面工具而不是网页布局处理 */
@@ -17,7 +17,7 @@ html, body, #root {
   height: 100vh;
   min-height: 0;
   overflow: hidden;
-  background: #d8dde5;
+  background: #cfd7e3;
 }
 
 .top-workspace {
@@ -29,7 +29,7 @@ html, body, #root {
   min-width: 0;
   gap: 1px;
   overflow: hidden;
-  background: #d8dde5;
+  background: #cfd7e3;
 }
 
 .left-panel,
@@ -40,19 +40,19 @@ html, body, #root {
 }
 
 .left-panel {
-  background: #f5f5f5;
+  background: #f8fafc;
   overflow: hidden;
   grid-column: 1;
 }
 
 .center-panel {
-  background: #e7e7e7;
+  background: #e9eef5;
   overflow: hidden;
   grid-column: 2;
 }
 
 .right-panel {
-  background: #f5f5f5;
+  background: #f8fafc;
   overflow: hidden;
   grid-column: 3;
   display: flex;
@@ -94,7 +94,7 @@ html, body, #root {
 
 .side-resize-handle:hover::after,
 .resizing-side-panel .side-resize-handle::after {
-  background: #1976d2;
+  background: #2563eb;
 }
 
 .left-resize-handle {
@@ -111,19 +111,20 @@ html, body, #root {
   z-index: 30;
   width: 18px;
   height: 28px;
-  border: 1px solid #cfd6df;
-  background: #ffffff;
-  color: #334155;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #475569;
   font-size: 10px;
   line-height: 1;
   cursor: pointer;
-  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.14);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.12);
   transform: translateY(-50%);
 }
 
 .side-toggle:hover {
-  border-color: #1976d2;
-  color: #1976d2;
+  border-color: #2563eb;
+  color: #2563eb;
+  background: #ffffff;
 }
 
 .left-toggle {

@@ -132,6 +132,14 @@ pub enum OutputNameMode {
     None,
 }
 
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum OutputStructureMode {
+    #[default]
+    Flat,
+    ParentFolder,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OutputNameConfig {
     #[serde(default)]
@@ -165,4 +173,6 @@ pub struct SealOptions {
     pub output_dir: String,
     #[serde(default)]
     pub output_name: OutputNameConfig,
+    #[serde(default)]
+    pub output_structure: OutputStructureMode,
 }

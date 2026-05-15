@@ -46,6 +46,7 @@ interface ConfigState {
   batchProgress: BatchProgress | null;
   batchStartedAt: number | null;
   batchSummary: BatchSummary | null;
+  batchSummaryOpen: boolean;
   logs: LogEntry[];
 
   // Preview
@@ -72,6 +73,7 @@ interface ConfigState {
   setBatchProgress: (p: BatchProgress | null) => void;
   setBatchStartedAt: (v: number | null) => void;
   setBatchSummary: (s: BatchSummary | null) => void;
+  setBatchSummaryOpen: (v: boolean) => void;
   addLog: (message: string, color?: string) => void;
   clearLogs: () => void;
   setSelectedFileIndex: (i: number) => void;
@@ -124,6 +126,7 @@ const defaultAppSettings: AppSettings = {
     mode: "suffix",
     text: "_sealed",
   },
+  output_structure: "flat",
 };
 
 const defaultUpdateStatus: UpdateStatus = {
@@ -157,6 +160,7 @@ export const useConfigStore = create<ConfigState>((set) => ({
   batchProgress: null,
   batchStartedAt: null,
   batchSummary: null,
+  batchSummaryOpen: false,
   logs: [],
   selectedFileIndex: 0,
   previewScale: 1.0,
@@ -187,7 +191,8 @@ export const useConfigStore = create<ConfigState>((set) => ({
   setBatchPaused: (v) => set({ batchPaused: v }),
   setBatchProgress: (p) => set({ batchProgress: p }),
   setBatchStartedAt: (v) => set({ batchStartedAt: v }),
-  setBatchSummary: (summary) => set({ batchSummary: summary }),
+  setBatchSummary: (summary) => set({ batchSummary: summary, batchSummaryOpen: !!summary }),
+  setBatchSummaryOpen: (open) => set((s) => ({ batchSummaryOpen: open && !!s.batchSummary })),
   addLog: (message, color = "#333") =>
     set((s) => ({
       logs: [
@@ -195,7 +200,7 @@ export const useConfigStore = create<ConfigState>((set) => ({
         { time: new Date().toLocaleTimeString(), message, color },
       ],
     })),
-  clearLogs: () => set({ logs: [], batchSummary: null }),
+  clearLogs: () => set({ logs: [] }),
   setSelectedFileIndex: (i) => set({ selectedFileIndex: i }),
   setPreviewScale: (s) => set({ previewScale: s }),
 }));

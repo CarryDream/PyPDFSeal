@@ -4,6 +4,7 @@ export type PageScope = "all" | "first" | "last" | "custom";
 export type WatermarkLayout = "center" | "tile";
 export type CloseBehavior = "minimize_to_tray" | "minimize_to_taskbar" | "exit";
 export type OutputNameMode = "suffix" | "prefix" | "none";
+export type OutputStructureMode = "flat" | "parent_folder";
 
 export interface PageInfo {
   width_pt: number;
@@ -58,6 +59,7 @@ export interface AppSettings {
   auto_check_updates: boolean;
   close_behavior: CloseBehavior;
   output_name: OutputNameConfig;
+  output_structure: OutputStructureMode;
 }
 
 export interface OutputNameConfig {
@@ -88,6 +90,7 @@ export interface SealOptions {
   cert: CertConfig;
   output_dir: string;
   output_name: OutputNameConfig;
+  output_structure: OutputStructureMode;
 }
 
 export interface BatchProgress {

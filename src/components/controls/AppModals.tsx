@@ -12,7 +12,13 @@ type ActiveModal = "settings" | "updates" | "about" | null;
 
 export default function AppModals() {
   const [activeModal, setActiveModal] = useState<ActiveModal>(null);
-  const { updateStatus, setUpdateStatus, batchSummary, setBatchSummary } = useConfigStore();
+  const {
+    updateStatus,
+    setUpdateStatus,
+    batchSummary,
+    batchSummaryOpen,
+    setBatchSummaryOpen,
+  } = useConfigStore();
 
   useEffect(() => {
     if (updateStatus.current_version) return;
@@ -61,7 +67,7 @@ export default function AppModals() {
       : activeModal === "updates"
       ? "检查更新"
       : activeModal === "about"
-      ? "关于 PyPDFSeal"
+      ? "关于"
       : "";
 
   const handleClose = () => setActiveModal(null);
@@ -99,7 +105,8 @@ export default function AppModals() {
 
       <BatchSummaryModal
         summary={batchSummary}
-        onClose={() => setBatchSummary(null)}
+        isOpen={batchSummaryOpen}
+        onClose={() => setBatchSummaryOpen(false)}
       />
     </>
   );
@@ -107,9 +114,11 @@ export default function AppModals() {
 
 function BatchSummaryModal({
   summary,
+  isOpen,
   onClose,
 }: {
   summary: BatchSummary | null;
+  isOpen: boolean;
   onClose: () => void;
 }) {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
@@ -126,7 +135,7 @@ function BatchSummaryModal({
 
   return (
     <Modal
-      isOpen={!!summary}
+      isOpen={isOpen && !!summary}
       onOpenChange={(open) => {
         if (!open) onClose();
       }}
@@ -404,8 +413,7 @@ function AboutPanel() {
   return (
     <div className="flex flex-col gap-4 text-sm">
       <div>
-        <div className="text-xl font-semibold tracking-tight">PyPDFSeal</div>
-        <div className="text-xs text-foreground-500 mt-0.5">PDF 批量盖章 · 水印 · 证书签名工具</div>
+        <div className="text-sm text-foreground-600">PDF 批量盖章 · 水印 · 证书签名工具</div>
       </div>
 
       <div className="grid grid-cols-2 gap-y-2 text-foreground-600">

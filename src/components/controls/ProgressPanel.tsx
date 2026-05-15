@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { Button, Progress } from "@heroui/react";
 import { useConfigStore } from "../../store/configStore";
 import { batchProcess, batchPause, batchResume, batchCancel } from "../../utils/ipc";
@@ -7,10 +8,21 @@ export default function ProgressPanel() {
   const {
     files, sealEnabled, sealImagePath, sealWidth, sealHeight, sealOpacity,
     position, watermark, cert, outputDir, appSettings,
-    batchRunning, batchPaused, batchProgress,
+    batchRunning, batchPaused, batchProgress, batchSummary,
     setBatchRunning, setBatchPaused, setBatchProgress,
-    setBatchStartedAt, setBatchSummary, addLog, clearLogs,
+    setBatchStartedAt, setBatchSummary, setBatchSummaryOpen, addLog, clearLogs,
   } = useConfigStore();
+  const previousFilesRef = useRef(files);
+
+  useEffect(() => {
+    if (files === previousFilesRef.current) return;
+    previousFilesRef.current = files;
+
+    if (!batchRunning) {
+      setBatchProgress(null);
+      setBatchPaused(false);
+    }
+  }, [files, batchRunning, setBatchPaused, setBatchProgress]);
 
   const handleStart = async () => {
     const hasOperation =
@@ -29,6 +41,7 @@ export default function ProgressPanel() {
       cert,
       output_dir: outputDir,
       output_name: appSettings.output_name ?? { mode: "suffix", text: "_sealed" },
+      output_structure: appSettings.output_structure ?? "flat",
     };
 
     setBatchRunning(true);
@@ -93,6 +106,14 @@ export default function ProgressPanel() {
 
       {/* 操作按钮 */}
       <div className="flex gap-2 shrink-0">
+        <Button
+          size="sm"
+          variant="flat"
+          onPress={() => setBatchSummaryOpen(true)}
+          isDisabled={!batchSummary}
+        >
+          结果
+        </Button>
         <Button
           size="sm"
           color="primary"

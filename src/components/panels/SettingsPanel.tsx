@@ -5,7 +5,7 @@ import { useConfigStore } from "../../store/configStore";
 import { getAppVersion } from "../../utils/ipc";
 import { openReleasePage } from "../../utils/updates";
 import { checkAppUpdates, installAppUpdate } from "../../hooks/useAppSettings";
-import type { CloseBehavior, OutputNameMode } from "../../types";
+import type { CloseBehavior, OutputNameMode, OutputStructureMode } from "../../types";
 
 export default function SettingsPanel() {
   const {
@@ -43,6 +43,11 @@ export default function SettingsPanel() {
   const handleOutputNameModeKeys = (keys: any) => {
     const value = Array.from(keys)[0] as string | undefined;
     if (value) handleOutputNameModeChange(value);
+  };
+
+  const handleOutputStructureKeys = (keys: any) => {
+    const value = Array.from(keys)[0] as OutputStructureMode | undefined;
+    if (value) setAppSettings({ output_structure: value });
   };
 
   const handleSelectOutput = async () => {
@@ -89,6 +94,21 @@ export default function SettingsPanel() {
           <Button size="sm" variant="flat" onPress={() => setOutputDir("")} isDisabled={!outputDir}>
             清除
           </Button>
+        </div>
+      </div>
+
+      <div className="settings-section">
+        <Select
+          label="输出结构"
+          selectedKeys={[appSettings.output_structure ?? "flat"]}
+          onSelectionChange={handleOutputStructureKeys}
+          size="sm"
+        >
+          <SelectItem key="flat">平铺到输出目录</SelectItem>
+          <SelectItem key="parent_folder">按来源文件夹分组</SelectItem>
+        </Select>
+        <div className="settings-note">
+          按来源文件夹分组时，输出会进入“输出目录 / 学校文件夹名 / 文件名”。
         </div>
       </div>
 
